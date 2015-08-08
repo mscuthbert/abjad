@@ -1,15 +1,17 @@
 # -*- encoding: utf-8 -*-
 from abjad.tools import lilypondnametools
 from abjad.tools import schemetools
-from abjad.tools.abctools import AbjadObject
+from abjad.tools.abctools import AbjadValueObject
 
 
-class LineSegment(AbjadObject):
+class LineSegment(AbjadValueObject):
     r'''A line segment.
 
     Line segments format as text spanners.
 
     ..  container:: example
+
+        **Example 1.** Default line segment:
 
         ::
 
@@ -28,6 +30,7 @@ class LineSegment(AbjadObject):
         '_arrow_width',
         '_dash_fraction',
         '_dash_period',
+        '_default_scope',
         '_left_broken_padding',
         '_left_broken_text',
         '_left_hspace',
@@ -60,6 +63,7 @@ class LineSegment(AbjadObject):
         right_stencil_align_direction_y=None,
         style=None,
         ):
+        self._default_scope = None
         self._arrow_width = arrow_width
         self._dash_fraction = dash_fraction
         self._dash_period = dash_period
@@ -255,6 +259,14 @@ class LineSegment(AbjadObject):
         Returns float or none.
         '''
         return self._dash_period
+
+    @property
+    def default_scope(self):
+        r'''Gets default scope of line segment.
+
+        Returns none.
+        '''
+        return self._default_scope
 
     @property
     def left_broken_padding(self):

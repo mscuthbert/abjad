@@ -3,11 +3,10 @@ import fractions
 import math
 from abjad.tools import durationtools
 from abjad.tools import mathtools
-from abjad.tools import sequencetools
-from abjad.tools import systemtools
 from abjad.tools.scoretools.Container import Container
 from abjad.tools.topleveltools import inspect_
 from abjad.tools.topleveltools import mutate
+from abjad.tools.topleveltools import override
 
 
 class Tuplet(Container):
@@ -15,7 +14,7 @@ class Tuplet(Container):
 
     ..  container:: example
 
-        A tuplet:
+        **Example 1.** A tuplet:
 
             >>> tuplet = Tuplet(Multiplier(2, 3), "c'8 d'8 e'8")
             >>> show(tuplet) # doctest: +SKIP
@@ -31,7 +30,7 @@ class Tuplet(Container):
 
     ..  container:: example
 
-        A nested tuplet:
+        **Example 2.** A nested tuplet:
 
             >>> second_tuplet = Tuplet((4, 7), "g'4. ( a'16 )")
             >>> tuplet.insert(1, second_tuplet)
@@ -54,7 +53,7 @@ class Tuplet(Container):
 
     ..  container:: example
 
-        A doubly nested tuplet:
+        **Example 3.** A doubly nested tuplet:
 
             >>> third_tuplet = Tuplet((4, 5), [])
             >>> third_tuplet.extend("e''32 [ ef''32 d''32 cs''32 cqs''32 ]")
@@ -87,8 +86,11 @@ class Tuplet(Container):
 
     ### CLASS VARIABLES ###
 
+    __documentation_section__ = 'Containers'
+
     __slots__ = (
         '_force_fraction',
+        '_force_times_command',
         '_is_invisible',
         '_multiplier',
         '_preferred_denominator',
@@ -103,8 +105,9 @@ class Tuplet(Container):
         Container.__init__(self, music)
         multiplier = multiplier or durationtools.Multiplier(2, 3)
         self.multiplier = multiplier
-        self._force_fraction = None
-        self._is_invisible = None
+        self._force_fraction = False
+        self._force_times_command = False
+        self._is_invisible = False
         self._preferred_denominator = None
         self._signifier = '*'
 
@@ -131,6 +134,12 @@ class Tuplet(Container):
         return result
 
     ### PRIVATE PROPERTIES ###
+
+    @property
+    def _compact_representation(self):
+        if not self:
+            return '{{ {!s} }}'.format(self.multiplier)
+        return '{{ {!s} {} }}'.format(self.multiplier, self._contents_summary)
 
     @property
     def _has_power_of_two_denominator(self):
@@ -196,6 +205,27 @@ class Tuplet(Container):
 
     ### PRIVATE METHODS ###
 
+    def _as_graphviz_node(self):
+        from abjad.tools import documentationtools
+        from abjad.tools import scoretools
+        node = scoretools.Component._as_graphviz_node(self)
+        node[0].extend([
+            documentationtools.GraphvizTableRow([
+                documentationtools.GraphvizTableCell(
+                    label=type(self).__name__,
+                    attributes={'border': 0},
+                    ),
+                ]),
+            documentationtools.GraphvizTableHorizontalRule(),
+            documentationtools.GraphvizTableRow([
+                documentationtools.GraphvizTableCell(
+                    label='* {!s}'.format(self.multiplier),
+                    attributes={'border': 0},
+                    ),
+                ]),
+            ])
+        return node
+
     def _extract(self, scale_contents=False):
         if scale_contents:
             self._scale_contents(self.multiplier)
@@ -243,11 +273,14 @@ class Tuplet(Container):
         return self._format_slot_contributions_with_indent(result)
 
     def _format_lilypond_fraction_command_string(self):
-        if not self.is_invisible:
-            if self.is_augmentation or \
-                (not self._has_power_of_two_denominator) or \
-                self.force_fraction:
-                return r"\tweak #'text #tuplet-number::calc-fraction-text"
+        if self.is_invisible:
+            return ''
+        if 'text' in vars(override(self).tuplet_number):
+            return''
+        if (self.is_augmentation or
+            not self._has_power_of_two_denominator or
+            self.force_fraction):
+            return r"\tweak #'text #tuplet-number::calc-fraction-text"
         return ''
 
     def _format_open_brackets_slot(self, bundle):
@@ -261,7 +294,7 @@ class Tuplet(Container):
                 result.append([contributor, contributions])
             else:
                 contributor = ('self_brackets', 'open')
-                if self.multiplier != 1:
+                if self.force_times_command or self.multiplier != 1:
                     contributions = []
                     fraction_command_string = \
                         self._format_lilypond_fraction_command_string()
@@ -324,7 +357,7 @@ class Tuplet(Container):
 
         ..  container:: example
 
-            Gets forced fraction formatting of tuplet:
+            **Example 1.** Gets forced fraction formatting of tuplet:
 
             ::
 
@@ -343,12 +376,12 @@ class Tuplet(Container):
 
             ::
 
-                >>> tuplet.force_fraction is None
-                True
+                >>> tuplet.force_fraction
+                False
 
         ..  container:: example
 
-            Sets forced fraction formatting of tuplet:
+            **Example 2.** Sets forced fraction formatting of tuplet:
 
             ::
 
@@ -365,16 +398,201 @@ class Tuplet(Container):
                     e'8
                 }
 
+        ..  container:: example
+
+            **Example 3.** Ignored when tuplet number text is overridden
+            explicitly:
+
+            ::
+
+                >>> tuplet = Tuplet((2, 3), "c'8 d'8 e'8")
+                >>> duration = inspect_(tuplet).get_duration()
+                >>> markup = duration.to_score_markup()
+                >>> override(tuplet).tuplet_number.text = markup
+                >>> staff = Staff([tuplet])
+                >>> show(staff) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(staff))
+                \new Staff {
+                    \override TupletNumber #'text = \markup {
+                        \score
+                            {
+                                \new Score \with {
+                                    \override SpacingSpanner #'spacing-increment = #0.5
+                                    proportionalNotationDuration = ##f
+                                } <<
+                                    \new RhythmicStaff \with {
+                                        \remove Time_signature_engraver
+                                        \remove Staff_symbol_engraver
+                                        \override Stem #'direction = #up
+                                        \override Stem #'length = #5
+                                        \override TupletBracket #'bracket-visibility = ##t
+                                        \override TupletBracket #'direction = #up
+                                        \override TupletBracket #'padding = #1.25
+                                        \override TupletBracket #'shorten-pair = #'(-1 . -1.5)
+                                        \override TupletNumber #'text = #tuplet-number::calc-fraction-text
+                                        tupletFullLength = ##t
+                                    } {
+                                        c'4
+                                    }
+                                >>
+                                \layout {
+                                    indent = #0
+                                    ragged-right = ##t
+                                }
+                            }
+                        }
+                    \times 2/3 {
+                        c'8
+                        d'8
+                        e'8
+                    }
+                    \revert TupletNumber #'text
+                }
+
         Returns boolean or none.
         '''
         return self._force_fraction
 
     @force_fraction.setter
     def force_fraction(self, arg):
-        if isinstance(arg, (bool, type(None))):
+        if isinstance(arg, (bool)):
             self._force_fraction = arg
         else:
-            message = 'bad type for tuplet force fraction: {!r}.'
+            message = 'must be true or false: {!r}.'
+            message = message.format(arg)
+            raise TypeError(message)
+
+    @property
+    def force_times_command(self):
+        r'''Is true when trivial tuplets print LilyPond ``\times`` command.
+        Otherwise false.
+
+        ..  container:: example
+
+            **Example 1.** Trivial tuplets normally print as a LilyPond
+            container enclosed in ``{`` and ``}`` but without the LilyPond
+            ``\times`` command:
+
+            ::
+
+                >>> trivial_tuplet = Tuplet((1, 1), "c'4 d' e'")
+                >>> trivial_tuplet.force_times_command
+                False
+
+            ::
+
+                >>> f(trivial_tuplet)
+                {
+                    c'4
+                    d'4
+                    e'4
+                }
+
+            ::
+
+                >>> show(trivial_tuplet) # doctest: +SKIP
+
+        ..  container:: example
+
+            **Example 2.** But it is possible to force a trivial tuplet to
+            format the LilyPond ``\times`` command:
+
+            ::
+
+                >>> trivial_tuplet = Tuplet((1, 1), "c'4 d' e'")
+                >>> trivial_tuplet.force_times_command = True
+
+            ::
+
+                >>> f(trivial_tuplet)
+                \times 1/1 {
+                    c'4
+                    d'4
+                    e'4
+                }
+
+            ::
+
+                >>> show(trivial_tuplet) # doctest: +SKIP
+
+        ..  container:: example
+
+            **Example 3.** This makes it possible to override tuplet number
+            text:
+
+            ::
+
+                >>> trivial_tuplet = Tuplet((1, 1), "c'4 d' e'")
+                >>> trivial_tuplet.force_times_command = True
+                >>> duration = inspect_(trivial_tuplet).get_duration()
+                >>> markup = duration.to_score_markup()
+                >>> markup = markup.scale((0.75, 0.75))
+                >>> override(trivial_tuplet).tuplet_number.text = markup
+                >>> staff = Staff([trivial_tuplet])
+
+            ::
+
+                >>> show(staff) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> f(staff)
+                \new Staff {
+                    \override TupletNumber #'text = \markup {
+                        \scale
+                            #'(0.75 . 0.75)
+                            \score
+                                {
+                                    \new Score \with {
+                                        \override SpacingSpanner #'spacing-increment = #0.5
+                                        proportionalNotationDuration = ##f
+                                    } <<
+                                        \new RhythmicStaff \with {
+                                            \remove Time_signature_engraver
+                                            \remove Staff_symbol_engraver
+                                            \override Stem #'direction = #up
+                                            \override Stem #'length = #5
+                                            \override TupletBracket #'bracket-visibility = ##t
+                                            \override TupletBracket #'direction = #up
+                                            \override TupletBracket #'padding = #1.25
+                                            \override TupletBracket #'shorten-pair = #'(-1 . -1.5)
+                                            \override TupletNumber #'text = #tuplet-number::calc-fraction-text
+                                            tupletFullLength = ##t
+                                        } {
+                                            c'2.
+                                        }
+                                    >>
+                                    \layout {
+                                        indent = #0
+                                        ragged-right = ##t
+                                    }
+                                }
+                        }
+                    \times 1/1 {
+                        c'4
+                        d'4
+                        e'4
+                    }
+                    \revert TupletNumber #'text
+                }
+
+        Defaults to false.
+
+        Set to true or false.
+
+        Returns true or false.
+        '''
+        return self._force_times_command
+
+    @force_times_command.setter
+    def force_times_command(self, arg):
+        if isinstance(arg, (bool, type(None))):
+            self._force_times_command = arg
+        else:
+            message = 'must be true or false: {!r}.'
             message = message.format(arg)
             raise TypeError(message)
 
@@ -407,7 +625,7 @@ class Tuplet(Container):
 
         ..  container:: example
 
-            Augmented tuplet:
+            **Example 1.** Augmented tuplet:
 
             ::
 
@@ -421,7 +639,7 @@ class Tuplet(Container):
 
         ..  container:: example
 
-            Diminished tuplet:
+            **Example 2.** Diminished tuplet:
 
             ::
 
@@ -435,7 +653,7 @@ class Tuplet(Container):
 
         ..  container:: example
 
-            Trivial tuplet:
+            **Example 3.** Trivial tuplet:
 
             ::
 
@@ -461,7 +679,7 @@ class Tuplet(Container):
 
         ..  container:: example
 
-            Augmented tuplet:
+            **Example 1.** Augmented tuplet:
 
             ::
 
@@ -475,7 +693,7 @@ class Tuplet(Container):
 
         ..  container:: example
 
-            Diminished tuplet:
+            **Example 2.** Diminished tuplet:
 
             ::
 
@@ -489,7 +707,7 @@ class Tuplet(Container):
 
         ..  container:: example
 
-            Trivial tuplet:
+            **Example 3.** Trivial tuplet:
 
             ::
 
@@ -514,7 +732,7 @@ class Tuplet(Container):
 
         ..  container:: example
 
-            Gets tuplet invisibility flag:
+            **Example 1.** Gets tuplet invisibility flag:
 
             ::
 
@@ -532,12 +750,12 @@ class Tuplet(Container):
 
             ::
 
-                >>> tuplet.is_invisible is None
-                True
+                >>> tuplet.is_invisible
+                False
 
         ..  container:: example
 
-            Sets tuplet invisibility flag:
+            **Example 2.** Sets tuplet invisibility flag:
 
             ::
 
@@ -593,7 +811,7 @@ class Tuplet(Container):
 
     @is_invisible.setter
     def is_invisible(self, arg):
-        assert isinstance(arg, (bool, type(None)))
+        assert isinstance(arg, bool), repr(arg)
         self._is_invisible = arg
 
     @property
@@ -635,7 +853,7 @@ class Tuplet(Container):
 
         ..  container:: example
 
-            Gets tuplet multiplier:
+            **Example 1.** Gets tuplet multiplier:
 
                 >>> tuplet = Tuplet((2, 3), "c'8 d'8 e'8")
                 >>> show(tuplet) # doctest: +SKIP
@@ -647,7 +865,7 @@ class Tuplet(Container):
 
         ..  container:: example
 
-            Sets tuplet multiplier:
+            **Example 2.** Sets tuplet multiplier:
 
                 >>> tuplet.multiplier = Multiplier(4, 3)
                 >>> show(tuplet) # doctest: +SKIP
@@ -689,7 +907,7 @@ class Tuplet(Container):
 
         ..  container:: example
 
-            Gets preferred denominator of tuplet:
+            **Example 1.** Gets preferred denominator of tuplet:
 
             ::
 
@@ -709,7 +927,7 @@ class Tuplet(Container):
 
         ..  container:: example
 
-            Sets preferred denominator of tuplet:
+            **Example 2.** Sets preferred denominator of tuplet:
 
             ::
 
@@ -776,7 +994,7 @@ class Tuplet(Container):
 
                 >>> tuplet = Tuplet.from_duration_and_ratio(
                 ...     Duration(3, 16),
-                ...     mathtools.Ratio(1, 1, 1, -1, -1),
+                ...     mathtools.Ratio((1, 1, 1, -1, -1)),
                 ...     avoid_dots=True,
                 ...     is_diminution=False,
                 ...     )
@@ -807,7 +1025,7 @@ class Tuplet(Container):
 
                 >>> tuplet = Tuplet.from_duration_and_ratio(
                 ...     Duration(3, 16),
-                ...     mathtools.Ratio(1, -2, -2, 3, 3),
+                ...     mathtools.Ratio((1, -2, -2, 3, 3)),
                 ...     avoid_dots=True,
                 ...     is_diminution=False,
                 ...     )
@@ -838,7 +1056,7 @@ class Tuplet(Container):
 
                 >>> tuplet = Tuplet.from_duration_and_ratio(
                 ...     Duration(3, 16),
-                ...     mathtools.Ratio(5, -1, 5),
+                ...     mathtools.Ratio((5, -1, 5)),
                 ...     avoid_dots=True,
                 ...     decrease_durations_monotonically=False,
                 ...     is_diminution=False,
@@ -872,7 +1090,7 @@ class Tuplet(Container):
 
                 >>> tuplet = Tuplet.from_duration_and_ratio(
                 ...     Duration(3, 16),
-                ...     mathtools.Ratio(1, 1, 1, -1, -1),
+                ...     mathtools.Ratio((1, 1, 1, -1, -1)),
                 ...     avoid_dots=False,
                 ...     is_diminution=False,
                 ...     )
@@ -903,7 +1121,7 @@ class Tuplet(Container):
 
                 >>> tuplet = Tuplet.from_duration_and_ratio(
                 ...     Duration(3, 16),
-                ...     mathtools.Ratio(5, -1, 5),
+                ...     mathtools.Ratio((5, -1, 5)),
                 ...     avoid_dots=False,
                 ...     decrease_durations_monotonically=False,
                 ...     is_diminution=False,
@@ -938,7 +1156,7 @@ class Tuplet(Container):
 
                 >>> tuplet = Tuplet.from_duration_and_ratio(
                 ...     Duration(3, 16),
-                ...     mathtools.Ratio(1, 1, 1, -1, -1),
+                ...     mathtools.Ratio((1, 1, 1, -1, -1)),
                 ...     avoid_dots=True,
                 ...     is_diminution=True,
                 ...     )
@@ -969,7 +1187,7 @@ class Tuplet(Container):
 
                 >>> tuplet = Tuplet.from_duration_and_ratio(
                 ...     Duration(3, 16),
-                ...     mathtools.Ratio(1, -2, -2, 3, 3),
+                ...     mathtools.Ratio((1, -2, -2, 3, 3)),
                 ...     avoid_dots=True,
                 ...     is_diminution=True,
                 ...     )
@@ -1000,7 +1218,7 @@ class Tuplet(Container):
 
                 >>> tuplet = Tuplet.from_duration_and_ratio(
                 ...     Duration(3, 16),
-                ...     mathtools.Ratio(5, -1, 5),
+                ...     mathtools.Ratio((5, -1, 5)),
                 ...     avoid_dots=True,
                 ...     decrease_durations_monotonically=False,
                 ...     is_diminution=True,
@@ -1034,7 +1252,7 @@ class Tuplet(Container):
 
                 >>> tuplet = Tuplet.from_duration_and_ratio(
                 ...     Duration(3, 16),
-                ...     mathtools.Ratio(1, 1, 1, -1, -1),
+                ...     mathtools.Ratio((1, 1, 1, -1, -1)),
                 ...     avoid_dots=False,
                 ...     is_diminution=True,
                 ...     )
@@ -1063,7 +1281,7 @@ class Tuplet(Container):
 
                 >>> tuplet = Tuplet.from_duration_and_ratio(
                 ...     Duration(3, 16),
-                ...     mathtools.Ratio(5, -1, 5),
+                ...     mathtools.Ratio((5, -1, 5)),
                 ...     avoid_dots=False,
                 ...     decrease_durations_monotonically=False,
                 ...     is_diminution=True,
@@ -1096,7 +1314,7 @@ class Tuplet(Container):
         duration = durationtools.Duration(duration)
         ratio = mathtools.Ratio(ratio)
         # find basic duration of note in tuplet
-        basic_prolated_duration = duration / mathtools.weight(ratio)
+        basic_prolated_duration = duration / mathtools.weight(ratio.numbers)
         # find basic written duration of note in tuplet
         if avoid_dots:
             basic_written_duration = \
@@ -1105,7 +1323,7 @@ class Tuplet(Container):
             basic_written_duration = \
                 basic_prolated_duration.equal_or_greater_assignable
         # find written duration of each note in tuplet
-        written_durations = [x * basic_written_duration for x in ratio]
+        written_durations = [x * basic_written_duration for x in ratio.numbers]
         # make tuplet leaves
         try:
             notes = [
@@ -1114,8 +1332,10 @@ class Tuplet(Container):
                 ]
         except AssignabilityError:
             denominator = duration._denominator
-            note_durations = [durationtools.Duration(x, denominator)
-                for x in ratio]
+            note_durations = [
+                durationtools.Duration(x, denominator)
+                for x in ratio.numbers
+                ]
             pitches = [None if note_duration < 0 else 0
                 for note_duration in note_durations]
             leaf_durations = [abs(note_duration)
@@ -1156,7 +1376,7 @@ class Tuplet(Container):
 
                 >>> tuplet = Tuplet.from_leaf_and_ratio(
                 ...     note,
-                ...     mathtools.Ratio(1),
+                ...     mathtools.Ratio((1,)),
                 ...     is_diminution=False,
                 ...     )
                 >>> measure = Measure((3, 16), [tuplet])
@@ -1203,7 +1423,7 @@ class Tuplet(Container):
 
                 >>> tuplet = Tuplet.from_leaf_and_ratio(
                 ...     note,
-                ...     mathtools.Ratio(1, 2, 2),
+                ...     mathtools.Ratio((1, 2, 2)),
                 ...     is_diminution=False,
                 ...     )
                 >>> measure = Measure((3, 16), [tuplet])
@@ -1284,7 +1504,7 @@ class Tuplet(Container):
 
                 >>> tuplet = Tuplet.from_leaf_and_ratio(
                 ...     note,
-                ...     mathtools.Ratio(1, 2, 2, 3, 3, 4),
+                ...     mathtools.Ratio((1, 2, 2, 3, 3, 4)),
                 ...     is_diminution=False,
                 ...     )
                 >>> measure = Measure((3, 16), [tuplet])
@@ -1481,7 +1701,7 @@ class Tuplet(Container):
             ::
 
                 >>> tuplet = Tuplet.from_nonreduced_ratio_and_nonreduced_fraction(
-                ...     mathtools.NonreducedRatio(1),
+                ...     mathtools.NonreducedRatio((1,)),
                 ...     mathtools.NonreducedFraction(7, 16),
                 ...     )
                 >>> measure = Measure((7, 16), [tuplet])
@@ -1507,7 +1727,7 @@ class Tuplet(Container):
             ::
 
                 >>> tuplet = Tuplet.from_nonreduced_ratio_and_nonreduced_fraction(
-                ...     mathtools.NonreducedRatio(1, 2),
+                ...     mathtools.NonreducedRatio((1, 2)),
                 ...     mathtools.NonreducedFraction(7, 16),
                 ...     )
                 >>> measure = Measure((7, 16), [tuplet])
@@ -1530,7 +1750,7 @@ class Tuplet(Container):
             ::
 
                 >>> tuplet = Tuplet.from_nonreduced_ratio_and_nonreduced_fraction(
-                ...     mathtools.NonreducedRatio(1, 2, 4),
+                ...     mathtools.NonreducedRatio((1, 2, 4)),
                 ...     mathtools.NonreducedFraction(7, 16),
                 ...     )
                 >>> measure = Measure((7, 16), [tuplet])
@@ -1553,7 +1773,7 @@ class Tuplet(Container):
             ::
 
                 >>> tuplet = Tuplet.from_nonreduced_ratio_and_nonreduced_fraction(
-                ...     mathtools.NonreducedRatio(1, 2, 4, 1),
+                ...     mathtools.NonreducedRatio((1, 2, 4, 1)),
                 ...     mathtools.NonreducedFraction(7, 16),
                 ...     )
                 >>> measure = Measure((7, 16), [tuplet])
@@ -1578,7 +1798,7 @@ class Tuplet(Container):
             ::
 
                 >>> tuplet = Tuplet.from_nonreduced_ratio_and_nonreduced_fraction(
-                ...     mathtools.NonreducedRatio(1, 2, 4, 1, 2),
+                ...     mathtools.NonreducedRatio((1, 2, 4, 1, 2)),
                 ...     mathtools.NonreducedFraction(7, 16),
                 ...     )
                 >>> measure = Measure((7, 16), [tuplet])
@@ -1604,7 +1824,7 @@ class Tuplet(Container):
             ::
 
                 >>> tuplet = Tuplet.from_nonreduced_ratio_and_nonreduced_fraction(
-                ...     mathtools.NonreducedRatio(1, 2, 4, 1, 2, 4),
+                ...     mathtools.NonreducedRatio((1, 2, 4, 1, 2, 4)),
                 ...     mathtools.NonreducedFraction(7, 16),
                 ...     )
                 >>> measure = Measure((7, 16), [tuplet])
@@ -1638,15 +1858,15 @@ class Tuplet(Container):
         n = fraction.numerator
         d = fraction.denominator
         duration = durationtools.Duration(fraction)
-        if len(ratio) == 1:
-            if 0 < ratio[0]:
+        if len(ratio.numbers) == 1:
+            if 0 < ratio.numbers[0]:
                 try:
                     note = scoretools.Note(0, duration)
                     return scoretools.Container([note])
                 except AssignabilityError:
                     notes = scoretools.make_notes(0, duration)
                     return scoretools.Container(notes)
-            elif ratio[0] < 0:
+            elif ratio.numbers[0] < 0:
                 try:
                     rest = scoretools.Rest(duration)
                     return scoretools.Container([rest])
@@ -1656,12 +1876,12 @@ class Tuplet(Container):
             else:
                 message = 'no divide zer values.'
                 raise ValueError(message)
-        if 1 < len(ratio):
+        if 1 < len(ratio.numbers):
             exponent = int(
-                math.log(mathtools.weight(ratio), 2) - math.log(n, 2))
+                math.log(mathtools.weight(ratio.numbers), 2) - math.log(n, 2))
             denominator = int(d * 2 ** exponent)
             music = []
-            for x in ratio:
+            for x in ratio.numbers:
                 if not x:
                     message = 'no divide zero values.'
                     raise ValueError(message)
@@ -1682,7 +1902,8 @@ class Tuplet(Container):
 
         ..  container:: example
 
-            Sets preferred denominator of tuplet to at least ``8``:
+            **Example 1.** Sets preferred denominator of tuplet to ``8`` at
+            least:
 
             ::
 
@@ -1737,6 +1958,8 @@ class Tuplet(Container):
         r'''Changes tuplet to fixed-duration tuplet.
 
         ..  container:: example
+
+            **Example 1.** Changes tuplet to fixed-duration tuplet:
 
             ::
 

@@ -4,7 +4,7 @@ from abjad.tools.datastructuretools.TypedList import TypedList
 
 
 class TempoInventory(TypedList):
-    r'''An ordered list of tempo indications.
+    r'''An ordered list of tempo indicators.
 
     ::
 
@@ -18,8 +18,8 @@ class TempoInventory(TypedList):
         >>> for tempo in inventory:
         ...     tempo
         ...
-        Tempo(duration=Duration(1, 8), units_per_minute=72, textual_indication='Andante')
-        Tempo(duration=Duration(1, 8), units_per_minute=84, textual_indication='Allegro')
+        Tempo(reference_duration=Duration(1, 8), units_per_minute=72, textual_indication='Andante')
+        Tempo(reference_duration=Duration(1, 8), units_per_minute=84, textual_indication='Allegro')
 
     Tempo inventories implement list interface and are mutable.
     '''
@@ -84,11 +84,6 @@ class TempoInventory(TypedList):
         return lilypond_file
 
     ### PRIVATE PROPERTIES ###
-
-    @property
-    def _attribute_manifest(self):
-        from abjad.tools import systemtools
-        return systemtools.AttributeManifest()
 
     @property
     def _item_coercer(self):

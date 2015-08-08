@@ -1,118 +1,129 @@
 # -*- encoding: utf-8 -*-
 from abjad.tools import documentationtools
 from abjad.tools import durationtools
-from abjad.tools import mathtools
 from abjad.tools import scoretools
-from abjad.tools import selectiontools
 from abjad.tools import spannertools
 from abjad.tools.datastructuretools.TreeContainer import TreeContainer
-from abjad.tools.rhythmtreetools.RhythmTreeNode import RhythmTreeNode
+from abjad.tools.rhythmtreetools.RhythmTreeMixin import RhythmTreeMixin
 
 
-class RhythmTreeContainer(RhythmTreeNode, TreeContainer):
+class RhythmTreeContainer(RhythmTreeMixin, TreeContainer):
     r'''A rhythm-tree container.
 
-    ::
+    ..  container:: example
 
-        >>> container = rhythmtreetools.RhythmTreeContainer(
-        ...     preprolated_duration=1, children=[])
-        >>> print(format(container))
-        rhythmtreetools.RhythmTreeContainer(
-            preprolated_duration=durationtools.Duration(1, 1),
-            )
+        **Example 1.** Initializes a rhythm-tree container:
 
-    Similar to Abjad containers, `RhythmTreeContainer` supports a list
-    interface, and can be appended, extended, indexed and so forth
-    by other `RhythmTreeNode` subclasses:
+        ::
 
-    ::
+            >>> container = rhythmtreetools.RhythmTreeContainer(
+            ...     preprolated_duration=1, children=[])
+            >>> print(format(container))
+            rhythmtreetools.RhythmTreeContainer(
+                preprolated_duration=durationtools.Duration(1, 1),
+                )
 
-        >>> leaf_a = rhythmtreetools.RhythmTreeLeaf(preprolated_duration=1)
-        >>> leaf_b = rhythmtreetools.RhythmTreeLeaf(preprolated_duration=2)
-        >>> container.extend([leaf_a, leaf_b])
-        >>> print(format(container))
-        rhythmtreetools.RhythmTreeContainer(
-            children=(
-                rhythmtreetools.RhythmTreeLeaf(
-                    preprolated_duration=durationtools.Duration(1, 1),
-                    is_pitched=True,
-                    ),
-                rhythmtreetools.RhythmTreeLeaf(
-                    preprolated_duration=durationtools.Duration(2, 1),
-                    is_pitched=True,
-                    ),
-                ),
-            preprolated_duration=durationtools.Duration(1, 1),
-            )
+    ..  container:: example
 
-    ::
+        **Example 2.** Similar to Abjad containers, `RhythmTreeContainer`
+        supports a list interface, and can be appended, extended, indexed and
+        so forth by other `RhythmTreeMixin` subclasses:
 
-        >>> another_container = rhythmtreetools.RhythmTreeContainer(
-        ...     preprolated_duration=2)
-        >>> another_container.append(
-        ...     rhythmtreetools.RhythmTreeLeaf(preprolated_duration=3))
-        >>> another_container.append(container[1])
-        >>> container.append(another_container)
-        >>> print(format(container))
-        rhythmtreetools.RhythmTreeContainer(
-            children=(
-                rhythmtreetools.RhythmTreeLeaf(
-                    preprolated_duration=durationtools.Duration(1, 1),
-                    is_pitched=True,
-                    ),
-                rhythmtreetools.RhythmTreeContainer(
-                    children=(
-                        rhythmtreetools.RhythmTreeLeaf(
-                            preprolated_duration=durationtools.Duration(3, 1),
-                            is_pitched=True,
-                            ),
-                        rhythmtreetools.RhythmTreeLeaf(
-                            preprolated_duration=durationtools.Duration(2, 1),
-                            is_pitched=True,
-                            ),
+        ::
+
+            >>> leaf_a = rhythmtreetools.RhythmTreeLeaf(preprolated_duration=1)
+            >>> leaf_b = rhythmtreetools.RhythmTreeLeaf(preprolated_duration=2)
+            >>> container.extend([leaf_a, leaf_b])
+            >>> print(format(container))
+            rhythmtreetools.RhythmTreeContainer(
+                children=(
+                    rhythmtreetools.RhythmTreeLeaf(
+                        preprolated_duration=durationtools.Duration(1, 1),
+                        is_pitched=True,
                         ),
-                    preprolated_duration=durationtools.Duration(2, 1),
+                    rhythmtreetools.RhythmTreeLeaf(
+                        preprolated_duration=durationtools.Duration(2, 1),
+                        is_pitched=True,
+                        ),
                     ),
-                ),
-            preprolated_duration=durationtools.Duration(1, 1),
-            )
+                preprolated_duration=durationtools.Duration(1, 1),
+                )
 
-    Call `RhythmTreeContainer` with a preprolated_duration to generate
-    a tuplet structure:
+        ::
 
-    ::
+            >>> another_container = rhythmtreetools.RhythmTreeContainer(
+            ...     preprolated_duration=2)
+            >>> another_container.append(
+            ...     rhythmtreetools.RhythmTreeLeaf(preprolated_duration=3))
+            >>> another_container.append(container[1])
+            >>> container.append(another_container)
+            >>> print(format(container))
+            rhythmtreetools.RhythmTreeContainer(
+                children=(
+                    rhythmtreetools.RhythmTreeLeaf(
+                        preprolated_duration=durationtools.Duration(1, 1),
+                        is_pitched=True,
+                        ),
+                    rhythmtreetools.RhythmTreeContainer(
+                        children=(
+                            rhythmtreetools.RhythmTreeLeaf(
+                                preprolated_duration=durationtools.Duration(3, 1),
+                                is_pitched=True,
+                                ),
+                            rhythmtreetools.RhythmTreeLeaf(
+                                preprolated_duration=durationtools.Duration(2, 1),
+                                is_pitched=True,
+                                ),
+                            ),
+                        preprolated_duration=durationtools.Duration(2, 1),
+                        ),
+                    ),
+                preprolated_duration=durationtools.Duration(1, 1),
+                )
 
-        >>> container((1, 4))
-        [FixedDurationTuplet(Duration(1, 4), 'c\'8 FixedDurationTuplet(Duration(1, 4), "c\'8. c\'8")')]
+    ..  container:: example
 
-    ..  doctest::
+        **Example 3.** Call `RhythmTreeContainer` with a preprolated_duration
+        to generate a tuplet structure:
 
-        >>> print(format(_[0]))
-        \times 2/3 {
-            c'8
-            \times 4/5 {
-                c'8.
+        ::
+
+            >>> list_ = container((1, 4))
+            >>> list_
+            [FixedDurationTuplet(Duration(1, 4), "c'8 { 4/5 c'8. c'8 }")]
+            >>> tuplet = list_[0]
+            >>> show(tuplet) # doctest: +SKIP
+
+        ..  doctest::
+
+            >>> print(format(_[0]))
+            \times 2/3 {
                 c'8
+                \times 4/5 {
+                    c'8.
+                    c'8
+                }
             }
-        }
 
     Returns `RhythmTreeContainer` instance.
     '''
 
+    ### CLASS VARIABLES ###
+
+    __slots__ = (
+        '_duration',
+        '_offset',
+        '_offsets_are_current',
+        )
+
     ### INITIALIZER ###
 
     def __init__(self, children=None, preprolated_duration=1, name=None):
-        RhythmTreeNode.__init__(
-            self,
-            preprolated_duration=preprolated_duration,
-            name=name,
-            )
-        self._children = []
-        if isinstance(children, type(None)):
-            pass
-        elif isinstance(children, (list, str, tuple)):
+        TreeContainer.__init__(self, name=name)
+        RhythmTreeMixin.__init__(self, preprolated_duration=preprolated_duration)
+        if isinstance(children, (list, str, tuple)):
             self.extend(children)
-        else:
+        elif children is not None:
             message = 'can not instantiate {} with {!r}.'
             raise ValueError(message.format(type(self), children))
 
@@ -194,12 +205,10 @@ class RhythmTreeContainer(RhythmTreeNode, TreeContainer):
         ::
 
             >>> tree((1, 4))
-            [FixedDurationTuplet(Duration(1, 4), 'c\'16 FixedDurationTuplet(Duration(1, 8), "c\'16 c\'16 c\'16") c\'8')]
+            [FixedDurationTuplet(Duration(1, 4), "c'16 { 2/3 c'16 c'16 c'16 } c'8")]
 
         Returns sequence of components.
         '''
-        pulse_duration = durationtools.Duration(pulse_duration)
-        assert 0 < pulse_duration
         def recurse(node, tuplet_duration):
             basic_prolated_duration = tuplet_duration / node._contents_duration
             basic_written_duration = \
@@ -219,6 +228,9 @@ class RhythmTreeContainer(RhythmTreeNode, TreeContainer):
             if tuplet.multiplier == 1:
                 return tuplet[:]
             return [tuplet]
+        from abjad.tools.topleveltools import attach
+        pulse_duration = durationtools.Duration(pulse_duration)
+        assert 0 < pulse_duration
         result = recurse(self, pulse_duration * self.preprolated_duration)
         for component in result[:]:
             if isinstance(component, scoretools.Tuplet):
@@ -226,19 +238,7 @@ class RhythmTreeContainer(RhythmTreeNode, TreeContainer):
                     component._extract()
         return result
 
-    def __eq__(self, expr):
-        r'''True if type, preprolated_duration and children are equivalent.
-        Otherwise False.
-
-        Returns boolean.
-        '''
-        if type(self) == type(expr):
-            if self.preprolated_duration == expr.preprolated_duration:
-                if self.children == expr.children:
-                    return True
-        return False
-
-    def __graph__(self):
+    def __graph__(self, **kwargs):
         r'''The GraphvizGraph representation of the RhythmTreeContainer:
 
         ::
@@ -248,6 +248,8 @@ class RhythmTreeContainer(RhythmTreeNode, TreeContainer):
             >>> graph = tree.__graph__()
             >>> print(str(graph))
             digraph G {
+                graph [bgcolor=transparent,
+                    truecolor=true];
                 node_0 [label=1,
                     shape=triangle];
                 node_1 [label=1,
@@ -276,8 +278,13 @@ class RhythmTreeContainer(RhythmTreeNode, TreeContainer):
 
         Return `GraphvizGraph` instance.
         '''
-
-        graph = documentationtools.GraphvizGraph(name='G')
+        graph = documentationtools.GraphvizGraph(
+            name='G',
+            attributes={
+                'bgcolor': 'transparent',
+                'truecolor': True,
+                },
+            )
         node_mapping = {}
         for node in self.nodes:
             graphviz_node = documentationtools.GraphvizNode()
@@ -294,15 +301,6 @@ class RhythmTreeContainer(RhythmTreeNode, TreeContainer):
                     node_mapping[node],
                     )
         return graph
-
-    def __hash__(self):
-        r'''Hashes rhythm-tree container.
-
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
-
-        Returns integer.
-        '''
-        return super(RhythmTreeContainer, self).__hash__()
 
     def __repr__(self):
         r'''Gets interpreter representation of rhythm tree container.
@@ -433,14 +431,14 @@ class RhythmTreeContainer(RhythmTreeNode, TreeContainer):
 
     @property
     def _node_class(self):
-        return RhythmTreeNode
+        return RhythmTreeMixin
 
     @property
     def _pretty_rtm_format_pieces(self):
         result = []
         result.append('({!s} ('.format(self.preprolated_duration))
         for child in self:
-            result.extend(['\t' + x for x in child._pretty_rtm_format_pieces])
+            result.extend(['    ' + x for x in child._pretty_rtm_format_pieces])
         result[-1] = result[-1] + '))'
         return result
 

@@ -2,7 +2,6 @@
 import collections
 import math
 import numbers
-import re
 from abjad.tools import mathtools
 from abjad.tools import stringtools
 from abjad.tools.pitchtools.Pitch import Pitch
@@ -157,7 +156,7 @@ class NamedPitch(Pitch):
         ..  container:: example
 
             **Example 1.** C#5 equals C#5:
-            
+
             ::
 
                 >>> NamedPitch('C#5') == NamedPitch("cs''")
@@ -193,7 +192,7 @@ class NamedPitch(Pitch):
 
                 >>> float(NamedPitch('C#5'))
                 13.0
-                
+
         ..  container:: example
 
             **Example 2.** Changes Ctqs5 to float:
@@ -256,7 +255,7 @@ class NamedPitch(Pitch):
         return False
 
     def __hash__(self):
-        r'''Required to be explicitely re-defined on Python 3 if
+        r'''Required to be explicitly re-defined on Python 3 if
         __eq__ changes.
 
         Returns integer.
@@ -571,7 +570,7 @@ class NamedPitch(Pitch):
         ..  container:: example
 
             **Example 1.** Inverts pitch around middle C explicitly:
-            
+
             ::
 
                 >>> NamedPitch("d'").invert("c'")
@@ -686,7 +685,7 @@ class NamedPitch(Pitch):
 
                 >>> NamedPitch("df''").respell_with_sharps()
                 NamedPitch("cs''")
-                
+
         ..  container:: example
 
             **Example 2.** Respells C#5 with sharps:
@@ -725,7 +724,7 @@ class NamedPitch(Pitch):
 
             ::
 
-            
+
                 >>> NamedPitch('C#5').to_staff_position(clef=Clef('treble'))
                 StaffPosition(number=1)
 
@@ -735,7 +734,7 @@ class NamedPitch(Pitch):
 
             ::
 
-            
+
                 >>> NamedPitch('C#5').to_staff_position(clef=Clef('bass'))
                 StaffPosition(number=13)
 
@@ -750,6 +749,7 @@ class NamedPitch(Pitch):
                 ...     staff_position = note.written_pitch.to_staff_position()
                 ...     markup = Markup(staff_position.number)
                 ...     attach(markup, note)
+                ...
                 >>> override(staff).text_script.staff_padding = 5
                 >>> show(staff) # doctest: +SKIP
 
@@ -791,6 +791,7 @@ class NamedPitch(Pitch):
                 ...         )
                 ...     markup = Markup(staff_position.number)
                 ...     attach(markup, note)
+                ... 
                 >>> override(staff).text_script.staff_padding = 5
                 >>> show(staff) # doctest: +SKIP
 
@@ -833,6 +834,7 @@ class NamedPitch(Pitch):
                 ...         )
                 ...     markup = Markup(staff_position.number)
                 ...     attach(markup, note)
+                ... 
                 >>> override(staff).text_script.staff_padding = 5
                 >>> show(staff) # doctest: +SKIP
 
@@ -935,7 +937,7 @@ class NamedPitch(Pitch):
         ..  container:: example
 
             **Example 1.** Gets alteration of C#5 in semitones:
-            
+
             ::
 
                 >>> NamedPitch("cs''").alteration_in_semitones
@@ -944,7 +946,7 @@ class NamedPitch(Pitch):
         ..  container:: example
 
             **Example 2.** Gets alteration of Ctqs5 in semitones:
-            
+
             ::
 
                 >>> NamedPitch("ctqs''").alteration_in_semitones
@@ -978,6 +980,7 @@ class NamedPitch(Pitch):
                 ...     name = note.written_pitch.diatonic_pitch_class_name
                 ...     markup = Markup(name)
                 ...     attach(markup, note)
+                ... 
                 >>> override(staff).text_script.staff_padding = 5
                 >>> show(staff) # doctest: +SKIP
 
@@ -1036,6 +1039,7 @@ class NamedPitch(Pitch):
                 ...     number = note.written_pitch.diatonic_pitch_class_number
                 ...     markup = Markup(number)
                 ...     attach(markup, note)
+                ...
                 >>> override(staff).text_script.staff_padding = 5
                 >>> show(staff) # doctest: +SKIP
 
@@ -1091,6 +1095,7 @@ class NamedPitch(Pitch):
                 ...     name = note.written_pitch.diatonic_pitch_name
                 ...     markup = Markup(name)
                 ...     attach(markup, note)
+                ... 
                 >>> override(staff).text_script.staff_padding = 5
                 >>> show(staff) # doctest: +SKIP
 
@@ -1149,6 +1154,7 @@ class NamedPitch(Pitch):
                 ...     number = note.written_pitch.diatonic_pitch_number
                 ...     markup = Markup(number)
                 ...     attach(markup, note)
+                ... 
                 >>> override(staff).text_script.staff_padding = 5
                 >>> show(staff) # doctest: +SKIP
 

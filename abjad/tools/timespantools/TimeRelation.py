@@ -9,14 +9,22 @@ class TimeRelation(AbjadObject):
     Time relations are immutable.
     '''
 
+    ### CLASS VARIABLES ###
+
+    __documentation_section__ = 'Time relations'
+
+    __slots__ = (
+        '_inequality',
+        )
+
     ### INITIALIZER ###
 
     def __init__(self, inequality=None):
         from abjad.tools import timespantools
-        default_inequality = timespantools.CompoundInequality([
-            'timespan_1.start_offset < timespan_2.start_offset',
-            ])
-        inequality = inequality or default_inequality
+        if not inequality:
+            inequality = timespantools.CompoundInequality([
+                'timespan_1.start_offset < timespan_2.start_offset',
+                ])
         assert isinstance(
             inequality, timespantools.CompoundInequality), repr(inequality)
         self._inequality = inequality
@@ -53,7 +61,7 @@ class TimeRelation(AbjadObject):
     def __hash__(self):
         r'''Hashes time relation.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''

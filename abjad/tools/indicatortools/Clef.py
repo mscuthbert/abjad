@@ -1,11 +1,13 @@
 # -*- encoding: utf-8 -*-
-from abjad.tools.abctools.AbjadObject import AbjadObject
+from abjad.tools.abctools.AbjadValueObject import AbjadValueObject
 
 
-class Clef(AbjadObject):
+class Clef(AbjadValueObject):
     r'''A clef.
 
     ..  container:: example
+
+        **Example 1.** At the beginning of a staff:
 
         ::
 
@@ -19,6 +21,8 @@ class Clef(AbjadObject):
             >>> show(staff) # doctest: +SKIP
 
     ..  container:: example
+
+        **Example 2.** Some available clefs:
 
         ::
 
@@ -108,64 +112,6 @@ class Clef(AbjadObject):
 
     ### SPECIAL METHODS ###
 
-    def __copy__(self, *args):
-        r'''Copies clef.
-
-        ..  container:: example
-
-            ::
-
-                >>> import copy
-                >>> clef_1 = Clef('alto')
-                >>> clef_2 = copy.copy(clef_1)
-
-            ::
-
-                >>> clef_1, clef_2
-                (Clef(name='alto'), Clef(name='alto'))
-
-            ::
-
-                >>> clef_1 == clef_2
-                True
-
-            ::
-
-                >>> clef_1 is clef_2
-                False
-
-        Returns new clef.
-        '''
-        return type(self)(self.name)
-
-    def __eq__(self, expr):
-        r'''Is true when `expr` is a clef with name equal to that of this clef.
-        Otherwise false.
-
-        ..  container:: example
-
-            ::
-
-                >>> clef_1 = Clef('treble')
-                >>> clef_2 = Clef('alto')
-
-            ::
-
-                >>> clef_1 == clef_1
-                True
-                >>> clef_1 == clef_2
-                False
-                >>> clef_2 == clef_1
-                False
-                >>> clef_2 == clef_2
-                True
-
-        Returns boolean.
-        '''
-        if isinstance(expr, type(self)):
-            return self._name == expr._name
-        return False
-
     def __format__(self, format_specification=''):
         r'''Formats clef.
 
@@ -182,21 +128,20 @@ class Clef(AbjadObject):
                     name='treble',
                     )
 
+        ..  container:: example
+
+            ::
+
+                >>> clef = Clef('treble')
+                >>> print(format(clef, 'lilypond'))
+                \clef "treble"
+
         Returns string.
         '''
         if format_specification == 'lilypond':
             return self._lilypond_format
         superclass = super(Clef, self)
         return superclass.__format__(format_specification=format_specification)
-
-    def __hash__(self):
-        r'''Hashes clef.
-
-        Required to be explicitly re-defined on Python 3 if __eq__ changes.
-
-        Returns integer.
-        '''
-        return super(Clef, self).__hash__()
 
     def __ne__(self, arg):
         r'''Is true when clef of `arg` does not equal clef name of clef.
@@ -226,18 +171,6 @@ class Clef(AbjadObject):
         return superclass.__ne__(arg)
 
     ### PRIVATE PROPERTIES ###
-
-    @property
-    def _attribute_manifest(self):
-        from abjad.tools import systemtools
-        from ide import idetools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='name',
-                command='nm',
-                editor=idetools.getters.get_string,
-                ),
-            )
 
     @property
     def _clef_name_to_staff_position_zero(self, clef_name):
@@ -297,6 +230,24 @@ class Clef(AbjadObject):
         return list(sorted(cls._clef_name_to_middle_c_position))
 
     ### PUBLIC PROPERTIES ###
+
+    @property
+    def default_scope(self):
+        r'''Gets default scope of clef.
+
+        ..  container:: example
+
+            ::
+
+                >>> clef = Clef('treble')
+                >>> clef.default_scope
+                <class 'abjad.tools.scoretools.Staff.Staff'>
+
+        Clefs are staff-scoped by default.
+
+        Returns staff.
+        '''
+        return self._default_scope
 
     @property
     def middle_c_position(self):

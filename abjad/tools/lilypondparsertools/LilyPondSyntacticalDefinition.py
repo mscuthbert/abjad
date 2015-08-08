@@ -1115,7 +1115,7 @@ class LilyPondSyntacticalDefinition(AbjadObject):
         'event_chord : MULTI_MEASURE_REST optional_notemode_duration post_events'
         rest = scoretools.MultimeasureRest(p[2].duration)
         if p[2].multiplier is not None:
-            multiplier = durationtools.Multiplier([2].multiplier)
+            multiplier = durationtools.Multiplier(p[2].multiplier)
             attach(multiplier, rest)
         self.client._process_post_events(rest, p[3])
         p[0] = rest
@@ -2648,7 +2648,7 @@ class LilyPondSyntacticalDefinition(AbjadObject):
             p[2].direction = p[1]
         except AttributeError:
             direction = \
-                stringtools.arg_to_tridirectional_ordinal_constant(p[1])
+                stringtools.expr_to_tridirectional_ordinal_constant(p[1])
             assert hasattr(p[2], '_direction')
             p[2]._direction = direction
         p[0] = p[2]
@@ -2664,7 +2664,7 @@ class LilyPondSyntacticalDefinition(AbjadObject):
             p[2].direction = p[1]
         except AttributeError:
             direction = \
-                stringtools.arg_to_tridirectional_ordinal_constant(p[1])
+                stringtools.expr_to_tridirectional_ordinal_constant(p[1])
             assert hasattr(p[2], '_direction')
             p[2]._direction = direction
         p[0] = p[2]
@@ -3272,7 +3272,7 @@ class LilyPondSyntacticalDefinition(AbjadObject):
         "tempo_event : TEMPO scalar_closed steno_duration '=' tempo_range"
         #p[0] = indicatortools.Tempo(str(p[2]), p[3].duration, p[5])
         p[0] = indicatortools.Tempo(
-            duration=p[3].duration,
+            reference_duration=p[3].duration,
             units_per_minute=p[5],
             textual_indication=str(p[2]),
             )
@@ -3280,7 +3280,7 @@ class LilyPondSyntacticalDefinition(AbjadObject):
     def p_tempo_event__TEMPO__steno_duration__Chr61__tempo_range(self, p):
         "tempo_event : TEMPO steno_duration '=' tempo_range"
         p[0] = indicatortools.Tempo(
-            duration=p[2].duration,
+            reference_duration=p[2].duration,
             units_per_minute=p[4],
             )
 

@@ -2,7 +2,6 @@
 from abjad.tools import pitchtools
 from abjad.tools.spannertools.Spanner import Spanner
 from abjad.tools.topleveltools import inspect_
-from abjad.tools.topleveltools import override
 
 
 class ComplexTrillSpanner(Spanner):
@@ -75,8 +74,8 @@ class ComplexTrillSpanner(Spanner):
 
     def __init__(
         self,
-        overrides=None,
         interval=None,
+        overrides=None,
         ):
         Spanner.__init__(
             self,
@@ -119,7 +118,7 @@ class ComplexTrillSpanner(Spanner):
                         ),
                     value=markuptools.Markup(r'\null'),
                     )
-                string = '\n'.join(grob_override._override_format_pieces)
+                string = grob_override.override_string
                 lilypond_format_bundle.grob_overrides.append(string)
             if self.interval is not None:
                 string = r'\pitchedTrill'

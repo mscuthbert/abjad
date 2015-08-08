@@ -1,20 +1,39 @@
 # -*- encoding: utf-8 -*-
-from abjad.tools.documentationtools.GraphvizObject import GraphvizObject
+from abjad.tools.documentationtools.GraphvizMixin import GraphvizMixin
 
 
-class GraphvizEdge(GraphvizObject):
+class GraphvizEdge(GraphvizMixin):
     r'''A Graphviz edge.
     '''
 
+    ### CLASS VARIABLES ###
+
+    __documentation_section__ = 'Graphviz'
+
+    __slots__ = (
+        '_attributes',
+        '_head',
+        '_head_port_position',
+        '_is_directed',
+        '_tail',
+        '_tail_port_position',
+        )
+
     ### INITIALIZER ###
 
-    def __init__(self, attributes=None, is_directed=True):
-        GraphvizObject.__init__(self, attributes=attributes)
+    def __init__(
+        self,
+        attributes=None,
+        is_directed=True,
+        head_port_position=None,
+        tail_port_position=None,
+        ):
+        GraphvizMixin.__init__(self, attributes=attributes)
         self._head = None
         self._tail = None
         self._is_directed = bool(is_directed)
-        self._head_port_position = None
-        self._tail_port_position = None
+        self.head_port_position = head_port_position
+        self.tail_port_position = tail_port_position
 
     ### SPECIAL METHODS ###
 
@@ -54,6 +73,27 @@ class GraphvizEdge(GraphvizObject):
             self.head._edges.remove(self)
         self._tail = None
         self._head = None
+
+    def _get_highest_parent(self):
+        from abjad.tools import documentationtools
+        highest_parent = None
+        if isinstance(self.tail, documentationtools.GraphvizField):
+            tail_parentage = list(self.tail.struct.proper_parentage)
+        else:
+            tail_parentage = list(self.tail.proper_parentage)
+        if isinstance(self.head, documentationtools.GraphvizField):
+            head_parentage = list(self.head.struct.proper_parentage)
+        else:
+            head_parentage = list(self.head.proper_parentage)
+        while len(tail_parentage) and len(head_parentage) and \
+            tail_parentage[-1] is head_parentage[-1]:
+            highest_parent = tail_parentage[-1]
+            tail_parentage.pop()
+            head_parentage.pop()
+        if highest_parent is None:
+            message = 'highest parent can not be none.'
+            raise Exception(message)
+        return highest_parent
 
     ### PRIVATE PROPERTIES ###
 

@@ -1,3 +1,7 @@
+# -*- encoding: utf-8 -*-
+import six
+
+
 def delimit_words(string):
     r'''Delimits words in `string`.
 
@@ -28,7 +32,7 @@ def delimit_words(string):
 
             >>> stringtools.delimit_words('ScaleDegrees4and 5.')
             ['Scale', 'Degrees', '4', 'and', '5']
-        
+
     ..  container:: example
 
         Delimits dash case::
@@ -59,13 +63,12 @@ def delimit_words(string):
 
     Returns list.
     '''
-
-    assert isinstance(string, str), repr(string)
+    assert isinstance(string, six.string_types), repr(string)
     wordlike_characters = ('<', '>', '!')
     words = []
     current_word = ''
     for character in string:
-        if (not character.isalpha() and 
+        if (not character.isalpha() and
             not character.isdigit() and
             not character in wordlike_characters
             ):

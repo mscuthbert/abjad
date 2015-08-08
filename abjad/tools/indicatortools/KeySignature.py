@@ -1,31 +1,63 @@
 # -*- encoding: utf-8 -*-
-from abjad.tools.abctools.AbjadObject import AbjadObject
+from abjad.tools.abctools.AbjadValueObject import AbjadValueObject
 
 
-class KeySignature(AbjadObject):
+class KeySignature(AbjadValueObject):
     r'''A key signature.
 
-    ::
+    ..  container:: example
 
-        >>> staff = Staff("e'8 fs'8 gs'8 a'8")
-        >>> key_signature = KeySignature('e', 'major')
-        >>> attach(key_signature, staff)
-        >>> show(staff) # doctest: +SKIP
+        **Example 1.** E major:
 
-    ..  doctest::
+        ::
 
-        >>> print(format(staff))
-        \new Staff {
-            \key e \major
-            e'8
-            fs'8
-            gs'8
-            a'8
-        }
+            >>> staff = Staff("e'8 fs'8 gs'8 a'8")
+            >>> key_signature = KeySignature('e', 'major')
+            >>> attach(key_signature, staff)
+            >>> show(staff) # doctest: +SKIP
+
+        ..  doctest::
+
+            >>> print(format(staff))
+            \new Staff {
+                \key e \major
+                e'8
+                fs'8
+                gs'8
+                a'8
+            }
+
+    ..  container:: example
+
+        **Example 2.** e minor:
+
+        ::
+
+            >>> staff = Staff("e'8 fs'8 g'8 a'8")
+            >>> key_signature = KeySignature('e', 'minor')
+            >>> attach(key_signature, staff)
+            >>> show(staff) # doctest: +SKIP
+
+        ..  doctest::
+
+            >>> print(format(staff))
+            \new Staff {
+                \key e \minor
+                e'8
+                fs'8
+                g'8
+                a'8
+            }
 
     '''
 
     ### CLASS VARIABLES ###
+
+    __slots__ = (
+        '_default_scope',
+        '_mode',
+        '_tonic',
+        )
 
     _format_slot = 'opening'
 
@@ -43,39 +75,26 @@ class KeySignature(AbjadObject):
 
     ### SPECIAL METHODS ###
 
-    def __copy__(self, *args):
-        r'''Copies key signature.
-
-        Returns new key signature.
-        '''
-        return type(self)(
-            self.tonic,
-            self.mode,
-            )
-
-    def __eq__(self, expr):
-        r'''Is true when `expr` is a key signature with tonic and mode equal
-        to that of this key signature. Otherwise false.
-
-        Returns boolean.
-        '''
-        if isinstance(expr, type(self)):
-            if self.tonic == expr.tonic:
-                if self.mode == expr.mode:
-                    return True
-        return False
-
-    def __hash__(self):
-        r'''Hashes key signature.
-
-        Required to be explicitly re-defined on Python 3 if __eq__ changes.
-
-        Returns integer.
-        '''
-        return super(KeySignature, self).__hash__()
-
     def __str__(self):
-        r'''String representation of key signature.
+        r'''Gets string representation of key signature.
+
+        ..  container:: example
+
+            **Example 1.** E major:
+
+            ::
+
+                >>> str(KeySignature('e', 'major'))
+                'e-major'
+
+        ..  container:: example
+
+            **Example 2.** e minor:
+
+            ::
+
+                >>> str(KeySignature('e', 'minor'))
+                'e-minor'
 
         Returns string.
         '''
@@ -94,13 +113,58 @@ class KeySignature(AbjadObject):
     ### PUBLIC PROPERTIES ###
 
     @property
+    def default_scope(self):
+        r'''Gets default scope of key signature.
+
+        ..  container:: example
+
+            **Example 1.** E major:
+
+            ::
+
+                >>> key_signature = KeySignature('e', 'major')
+                >>> key_signature.default_scope
+                <class 'abjad.tools.scoretools.Staff.Staff'>
+
+        ..  container:: example
+
+            **Example 2.** e minor:
+
+            ::
+
+                >>> key_signature = KeySignature('e', 'minor')
+                >>> key_signature.default_scope
+                <class 'abjad.tools.scoretools.Staff.Staff'>
+
+        Key signatures are staff-scoped by default.
+
+        Returns staff.
+        '''
+        return self._default_scope
+
+    @property
     def mode(self):
-        r'''Mode of signature.
+        r'''Gets mode of key signature.
 
-        ::
+        ..  container:: example
 
-            >>> key_signature.mode
-            Mode(mode_name='major')
+            **Example 1.** E major:
+
+            ::
+
+                >>> key_signature = KeySignature('e', 'major')
+                >>> key_signature.mode
+                Mode(mode_name='major')
+
+        ..  container:: example
+
+            **Example 2.** e minor:
+
+            ::
+
+                >>> key_signature = KeySignature('e', 'minor')
+                >>> key_signature.mode
+                Mode(mode_name='minor')
 
         Returns mode.
         '''
@@ -108,13 +172,27 @@ class KeySignature(AbjadObject):
 
     @property
     def name(self):
-        r'''Name of key signature.
+        r'''Gets name of key signature.
 
-        ::
+        ..  container:: example
 
-            >>> key_signature = KeySignature('e', 'major')
-            >>> key_signature.name
-            'E major'
+            **Example 1.** E major:
+
+            ::
+
+                >>> key_signature = KeySignature('e', 'major')
+                >>> key_signature.name
+                'E major'
+
+        ..  container:: example
+
+            **Example 2.** e minor:
+
+            ::
+
+                >>> key_signature = KeySignature('e', 'minor')
+                >>> key_signature.name
+                'e minor'
 
         Returns string.
         '''
@@ -126,12 +204,27 @@ class KeySignature(AbjadObject):
 
     @property
     def tonic(self):
-        r'''Tonic of key signature.
+        r'''Gets tonic of key signature.
 
-        ::
+        ..  container:: example
 
-            >>> key_signature.tonic
-            NamedPitchClass('e')
+            **Example 1.** E major:
+
+            ::
+
+                >>> key_signature = KeySignature('e', 'major')
+                >>> key_signature.tonic
+                NamedPitchClass('e')
+
+        ..  container:: example
+
+            **Example 2.** e minor:
+
+            ::
+
+                >>> key_signature = KeySignature('e', 'minor')
+                >>> key_signature.tonic
+                NamedPitchClass('e')
 
         Returns named pitch-class.
         '''

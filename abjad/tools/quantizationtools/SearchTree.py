@@ -1,9 +1,6 @@
 # -*- encoding: utf-8 -*-
 import abc
 import copy
-import inspect
-import pprint
-from abjad.tools import datastructuretools
 from abjad.tools import sequencetools
 from abjad.tools.abctools import AbjadObject
 
@@ -63,42 +60,14 @@ class SearchTree(AbjadObject):
                 return True
         return False
 
-    def __getnewargs__(self):
-        r'''Gets new arguments.
-
-        Returns tuple.
-        '''
-        return (self.definition,)
-
-    def __getstate__(self):
-        r'''Gets state of search tree.
-
-        Returns dictionary.
-        '''
-        state = {}
-        for current_class in inspect.getmro(type(self)):
-            if hasattr(current_class, '__slots__'):
-                for slot in current_class.__slots__:
-                    if slot not in state:
-                        state[slot] = getattr(self, slot)
-        return state
-
     def __hash__(self):
         r'''Hashes search tree.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''
         return super(SearchTree, self).__hash__()
-
-    def __setstate__(self, state):
-        r'''Sets `state` of search tree.
-
-        Returns none.
-        '''
-        for key, value in state.items():
-            setattr(self, key, value)
 
     ### PRIVATE METHODS ###
 
@@ -120,7 +89,7 @@ class SearchTree(AbjadObject):
                         for proxy in succeeding_proxies):
                     pass  # proxies align perfectly with this leaf
 
-                elif succeeding_proxies or succeeding_proxies:
+                elif preceding_proxies or succeeding_proxies:
                     parentage_ratios = leaf_one.parentage_ratios
                     leaf_subdivisions = \
                         self._find_leaf_subdivisions(parentage_ratios)
@@ -164,4 +133,4 @@ class SearchTree(AbjadObject):
 
         Returns dictionary.
         '''
-        return copy.deepcopy(self._definition)
+        return self._definition

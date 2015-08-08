@@ -1,9 +1,8 @@
 # -*- encoding: utf-8 -*-
-import numbers
-from abjad.tools.abctools.AbjadObject import AbjadObject
+from abjad.tools.abctools.AbjadValueObject import AbjadValueObject
 
 
-class Transposition(AbjadObject):
+class Transposition(AbjadValueObject):
     r'''Transposition operator.
 
     ..  container:: example
@@ -44,7 +43,7 @@ class Transposition(AbjadObject):
 
             ::
 
-                >>> operator_ = pitchtools.Transposition(index=2) 
+                >>> operator_ = pitchtools.Transposition(index=2)
                 >>> pc = pitchtools.NumberedPitchClass(1)
                 >>> operator_(pc)
                 NumberedPitchClass(3)
@@ -55,7 +54,7 @@ class Transposition(AbjadObject):
 
             ::
 
-                >>> operator_ = pitchtools.Transposition(index=2) 
+                >>> operator_ = pitchtools.Transposition(index=2)
                 >>> pitch = pitchtools.NumberedPitch(15)
                 >>> operator_(pitch)
                 NumberedPitch(17)

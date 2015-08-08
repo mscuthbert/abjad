@@ -4,64 +4,50 @@ Reference manual
 Leaves
 ------
 
-..  container:: two-column
+..  toctree::
+    :numbered:
 
-    ..  toctree::
-        :numbered:
-
-        chords/index
-        notes/index
-        rests/index
-
+    chords
+    notes
+    rests
 
 Containers
 ----------
 
-..  container:: two-column
+..  toctree::
+    :numbered:
 
-    ..  toctree::
-        :numbered:
-
-        containers/index
-        measures/index
-        scores/index
-        staves/index
-        tuplets/index
-        voices/index
-
-
-LilyPond files
---------------
-
-..  container:: two-column
-
-    ..  toctree::
-        :numbered:
-
-        lilypond_files/index
-
+    containers
+    measures
+    scores
+    staves
+    tuplets
+    voices
 
 Attachments
 -----------
 
-..  container:: two-column
+..  toctree::
+    :numbered:
 
-    ..  toctree::
-        :numbered:
+    annotations
+    articulations
+    instruments
+    lilypond_commands
+    lilypond_comments
 
-        annotations/index
-        articulations/index
-        instruments/index
-        lilypond_commands/index
-        lilypond_comments/index
+LilyPond files
+--------------
 
+..  toctree::
+    :numbered:
+
+    lilypond_files
 
 Pitches
 -------
 
-..  container:: two-column
+..  toctree::
+    :numbered:
 
-    ..  toctree::
-        :numbered:
-
-        named_pitches/index
+    named_pitches

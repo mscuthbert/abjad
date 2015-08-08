@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-import copy
+import collections
 import types
 from abjad.tools.topleveltools import iterate
 
@@ -51,8 +51,9 @@ class Selection(object):
         '''
         if isinstance(expr, type(self)):
             return self._music == expr._music
-        elif isinstance(expr, (list, tuple)):
+        elif isinstance(expr, collections.Sequence):
             return self._music == tuple(expr)
+        return False
 
     def __format__(self, format_specification=''):
         r'''Formats duration.
@@ -95,11 +96,11 @@ class Selection(object):
     def __hash__(self):
         r'''Hashes selection.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''
-        hash_values = (type(self), self._music) 
+        hash_values = (type(self), self._music)
         return hash(hash_values)
 
     def __illustrate__(self):
@@ -115,7 +116,7 @@ class Selection(object):
         The idea is that the illustration should work for simple selections of
         that represent an essentially contiguous snippet of a single voice of
         music.
-    
+
         Returns LilyPond file.
         '''
         from abjad.tools import lilypondfiletools
@@ -464,13 +465,19 @@ class Selection(object):
             for component in self
             )
 
-    def get_spanners(self, prototype=None):
+    def get_spanners(self, prototype=None, in_parentage=False):
         r'''Gets spanners attached to any component in selection.
 
         Returns set.
         '''
         result = set()
         for component in self:
-            spanners = component._get_spanners(prototype=prototype)
+            spanners = component._get_spanners(
+                prototype=prototype,
+                in_parentage=in_parentage,
+                )
             result.update(spanners)
         return result
+
+
+collections.Sequence.register(Selection)

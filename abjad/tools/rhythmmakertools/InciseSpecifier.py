@@ -2,7 +2,6 @@
 from abjad.tools import mathtools
 from abjad.tools import sequencetools
 from abjad.tools.abctools import AbjadValueObject
-from abjad.tools.topleveltools import new
 
 
 class InciseSpecifier(AbjadValueObject):
@@ -10,6 +9,8 @@ class InciseSpecifier(AbjadValueObject):
     '''
 
     ### CLASS VARIABLES ###
+
+    __documentation_section__ = 'Specifiers'
 
     __slots__ = (
         '_body_ratio',
@@ -60,8 +61,12 @@ class InciseSpecifier(AbjadValueObject):
         if suffix_talea:
             assert suffix_counts
         if talea_denominator is not None:
-            assert mathtools.is_nonnegative_integer_power_of_two(
-                talea_denominator)
+            if not mathtools.is_nonnegative_integer_power_of_two(
+                talea_denominator):
+                message = 'talea denominator {!r} must be nonnegative'
+                message += ' integer power of 2.'
+                message = message.format(talea_denominator)
+                raise Exception(message)
         self._talea_denominator = talea_denominator
         if prefix_talea or suffix_talea:
             assert talea_denominator is not None
@@ -79,6 +84,8 @@ class InciseSpecifier(AbjadValueObject):
         r'''Formats incise specifier.
 
         ..  container:: example
+
+            **Example 1.**
 
             ::
 
@@ -171,55 +178,6 @@ class InciseSpecifier(AbjadValueObject):
             expr = tuple(expr)
         return expr
 
-    ### PRIVATE PROPERTIES ###
-
-    @property
-    def _attribute_manifest(self):
-        from abjad.tools import systemtools
-        from ide import idetools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='prefix_talea',
-                command='pt',
-                editor=idetools.getters.get_nonzero_integers,
-                ),
-            systemtools.AttributeDetail(
-                name='prefix_counts',
-                command='pl',
-                editor=idetools.getters.get_nonnegative_integers,
-                ),
-            systemtools.AttributeDetail(
-                name='suffix_talea',
-                command='st',
-                editor=idetools.getters.get_nonzero_integers,
-                ),
-            systemtools.AttributeDetail(
-                name='suffix_counts',
-                command='sl',
-                editor=idetools.getters.get_nonnegative_integers,
-                ),
-            systemtools.AttributeDetail(
-                name='talea_denominator',
-                command='td',
-                editor=idetools.getters.get_positive_integer_power_of_two,
-                ),
-            systemtools.AttributeDetail(
-                name='body_ratio',
-                command='br',
-                editor=idetools.getters.get_positive_integers,
-                ),
-            systemtools.AttributeDetail(
-                name='fill_with_notes',
-                command='fn',
-                editor=idetools.getters.get_boolean,
-                ),
-            systemtools.AttributeDetail(
-                name='outer_divisions_only',
-                command='oo',
-                editor=idetools.getters.get_boolean,
-                ),
-            )
-
     ### PUBLIC PROPERTIES ###
 
     @property
@@ -228,7 +186,7 @@ class InciseSpecifier(AbjadValueObject):
 
         ..  container:: example
 
-            Divides middle part of every division ``1:1``:
+            **Example 1.** Divides middle part of every division ``1:1``:
 
             ::
 
@@ -238,7 +196,7 @@ class InciseSpecifier(AbjadValueObject):
                 ...     suffix_talea=[-1],
                 ...     suffix_counts=[1],
                 ...     talea_denominator=16,
-                ...     body_ratio=mathtools.Ratio(1, 1),
+                ...     body_ratio=mathtools.Ratio((1, 1)),
                 ...     )
                 >>> maker = rhythmmakertools.IncisedRhythmMaker(
                 ...     incise_specifier=incise_specifier,
@@ -295,27 +253,36 @@ class InciseSpecifier(AbjadValueObject):
         r'''Is true when rhythm-maker should fill divisions with notes.
         Otherwise false.
 
+        ..  todo:: Add examples.
+
         Defaults to true.
 
-        Returns boolean.
+        Set to true or false.
+
+        Returns true or false.
         '''
         return self._fill_with_notes
 
     @property
     def outer_divisions_only(self):
         r'''Is true when rhythm-maker should incise outer divisions only.
-
         Is false when rhythm-maker should incise all divisions.
+
+        ..  todo:: Add examples.
 
         Defaults to false.
 
         Set to true or false.
+        
+        Returns true or false.
         '''
         return self._outer_divisions_only
 
     @property
     def prefix_counts(self):
         r'''Gets prefix lengths of incision specifier.
+
+        ..  todo:: Add examples.
 
         Returns tuple or none.
         '''
@@ -325,6 +292,8 @@ class InciseSpecifier(AbjadValueObject):
     def prefix_talea(self):
         r'''Gets prefix talea of incision specifier.
 
+        ..  todo:: Add examples.
+
         Returns tuple or none.
         '''
         return self._prefix_talea
@@ -332,6 +301,8 @@ class InciseSpecifier(AbjadValueObject):
     @property
     def suffix_counts(self):
         r'''Gets suffix lengths of incision specifier.
+
+        ..  todo:: Add examples.
 
         Returns tuple or none.
         '''
@@ -341,6 +312,8 @@ class InciseSpecifier(AbjadValueObject):
     def suffix_talea(self):
         r'''Gets suffix talea of incision specifier.
 
+        ..  todo:: Add examples.
+
         Returns tuple or none.
         '''
         return self._suffix_talea
@@ -348,6 +321,8 @@ class InciseSpecifier(AbjadValueObject):
     @property
     def talea_denominator(self):
         r'''Gets talea denominator of incision specifier.
+
+        ..  todo:: Add examples.
 
         Returns positive integer-equivalent number.
         '''

@@ -36,7 +36,7 @@ class MetricAccentKernel(AbjadValueObject):
 
             >>> offsets = [(0, 8), (1, 8), (1, 8), (3, 8)]
             >>> kernel(offsets)
-            0.5
+            Multiplier(1, 2)
 
     '''
 
@@ -64,14 +64,28 @@ class MetricAccentKernel(AbjadValueObject):
     def __call__(self, expr):
         r'''Calls metrical accent kernal on `expr`.
 
+        ::
+
+            >>> upper_staff = Staff("c'8 d'4. e'8 f'4.")
+            >>> lower_staff = Staff(r'\clef bass c4 b,4 a,2')
+            >>> score = Score([upper_staff, lower_staff])
+
+        ::
+
+            >>> kernel = metertools.MetricAccentKernel.from_meter((4, 4))
+            >>> kernel(score)
+            Multiplier(10, 33)
+
         Returns float.
         '''
         offset_count = self.count_offsets_in_expr(expr)
-        response = 0.
+        response = durationtools.Multiplier(0, 1)
         for offset, count in offset_count.items():
             if offset in self._kernel:
-                response += (self._kernel[offset] * count)
-        return float(response)
+                weight = self._kernel[offset]
+                weighted_count = weight * count
+                response += weighted_count
+        return response
 
     def __eq__(self, expr):
         r'''Is true when `expr` is a metrical accent kernal with a kernal equal
@@ -87,7 +101,7 @@ class MetricAccentKernel(AbjadValueObject):
     def __hash__(self):
         r'''Hashes metric accent kernel.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''
@@ -123,18 +137,19 @@ class MetricAccentKernel(AbjadValueObject):
 
             ::
 
-                >>> score = Score()
-                >>> score.append(Staff("c'4. d'8 e'2"))
-                >>> score.append(Staff(r'\clef bass c4 b,4 a,2'))
+                >>> upper_staff = Staff("c'8 d'4. e'8 f'4.")
+                >>> lower_staff = Staff(r'\clef bass c4 b,4 a,2')
+                >>> score = Score([upper_staff, lower_staff])
 
             ..  doctest::
 
                 >>> print(format(score))
                 \new Score <<
                     \new Staff {
-                        c'4.
-                        d'8
-                        e'2
+                        c'8
+                        d'4.
+                        e'8
+                        f'4.
                     }
                     \new Staff {
                         \clef "bass"
@@ -158,9 +173,10 @@ class MetricAccentKernel(AbjadValueObject):
                 ...     offset, count
                 ...
                 (Offset(0, 1), 2)
+                (Offset(1, 8), 2)
                 (Offset(1, 4), 2)
-                (Offset(3, 8), 2)
                 (Offset(1, 2), 4)
+                (Offset(5, 8), 2)
                 (Offset(1, 1), 2)
 
         ..  container:: example
@@ -187,23 +203,22 @@ class MetricAccentKernel(AbjadValueObject):
 
         Returns counter.
         '''
-        if isinstance(expr, datastructuretools.TypedCounter):
-            if expr.item_class is durationtools.Offset:
-                return expr
-        counter = datastructuretools.TypedCounter(
-            item_class=durationtools.Offset,
+        from abjad.tools import metertools
+        return metertools.OffsetCounter(expr)
+
+    @staticmethod
+    def from_meter(meter, denominator=32, normalize=True):
+        r'''Create a metric accent kernel from `meter`.
+
+        Returns new metric accent kernel.
+        '''
+        from abjad.tools import metertools
+        if not isinstance(meter, metertools.Meter):
+            meter = metertools.Meter(meter)
+        return meter.generate_offset_kernel_to_denominator(
+            denominator=denominator,
+            normalize=normalize,
             )
-        for x in expr:
-            if hasattr(x, 'start_offset') and hasattr(x, 'stop_offset'):
-                counter[x.start_offset] += 1
-                counter[x.stop_offset] += 1
-            elif hasattr(x, '_get_timespan'):
-                counter[x._get_timespan().start_offset] += 1
-                counter[x._get_timespan().stop_offset] += 1
-            else:
-                offset = durationtools.Offset(x)
-                counter[offset] += 1
-        return counter
 
     ### PUBLIC PROPERTIES ###
 

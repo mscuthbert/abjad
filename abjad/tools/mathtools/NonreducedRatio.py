@@ -1,46 +1,51 @@
 # -*- encoding: utf-8 -*-
-from abjad.tools.abctools.AbjadObject import AbjadObject
+import collections
+from abjad.tools.abctools.AbjadValueObject import AbjadValueObject
 
 
-class NonreducedRatio(AbjadObject, tuple):
-    '''Nonreduced ratio of one or more nonzero integers.
+class NonreducedRatio(AbjadValueObject):
+    '''Nonreduced ratio.
 
-    Initializes from one or more nonzero integers:
+    ..  container:: example
 
-    ::
+        **Example 1.** Nonreduced ratio of two numbers:
 
-        >>> mathtools.NonreducedRatio(2, 4, 2)
-        NonreducedRatio(2, 4, 2)
+        ::
 
-    Initializes from a tuple or list:
+            >>> mathtools.NonreducedRatio((2, 4))
+            NonreducedRatio((2, 4))
 
-    ::
+    ..  container:: example
 
-        >>> ratio = mathtools.NonreducedRatio((2, 4, 2))
-        >>> ratio
-        NonreducedRatio(2, 4, 2)
+        **Example 2.** Nonreduced ratio of three numbers:
 
-    Uses a tuple to return ratio integers.
+            >>> mathtools.NonreducedRatio((2, 4, 2))
+            NonreducedRatio((2, 4, 2))
 
-        >>> tuple(ratio)
-        (2, 4, 2)
-
-    Nonreduced ratios are immutable.
     '''
 
-    ### CONSTRUCTOR ###
+    ### CLASS VARIABLES ###
 
-    def __new__(cls, *args):
-        if len(args) == 1 and isinstance(args[0], (list, tuple)):
-            args = args[0]
-        elif len(args) == 0:
-            args = (1, 1)
-        assert args, repr(args)
-        assert all(x != 0 for x in args), repr(args)
-        self = tuple.__new__(cls, args)
-        return self
+    __slots__ = (
+        '_numbers',
+        )
+
+    ### INITIALIZER ###
+
+    def __init__(self, numbers=(1, 1)):
+        if isinstance(numbers, type(self)):
+            numbers = numbers.numbers
+        numbers = tuple(numbers)
+        self._numbers = numbers
 
     ### SPECIAL METHODS ###
+
+    def __contains__(self, expr):
+        r'''Is true when ratio contains `expr`. Otherwise false.
+
+        Returns boolean.
+        '''
+        return expr in self._numbers
 
     def __eq__(self, expr):
         r'''Is true when `expr` is a nonreduced ratio with numerator and
@@ -49,13 +54,21 @@ class NonreducedRatio(AbjadObject, tuple):
         Returns boolean.
         '''
         expr = type(self)(expr)
-        return tuple(self) == tuple(expr)
+        return self.numbers == expr.numbers
 
     def __format__(self, format_specification=''):
         r'''Formats duration.
 
         Set `format_specification` to `''` or `'storage'`.
         Interprets `''` equal to `'storage'`.
+
+        ..  container:: example
+
+            ::
+
+                >>> ratio = mathtools.NonreducedRatio((2, 4, 2))
+                >>> print(format(ratio))
+                mathtools.NonreducedRatio((2, 4, 2))
 
         Returns string.
         '''
@@ -64,26 +77,162 @@ class NonreducedRatio(AbjadObject, tuple):
             return systemtools.StorageFormatManager.get_storage_format(self)
         return str(self)
 
+    def __getitem__(self, i):
+        r'''Gets item at `i`.
+
+        ..  container:: example
+
+            ::
+
+                >>> ratio = mathtools.NonreducedRatio((2, 4, 2))
+                >>> ratio[1]
+                4
+
+        Returns integer or tuple.
+        '''
+        if isinstance(i, slice):
+            return tuple(self._numbers[i])
+        return self._numbers[i]
+
     def __hash__(self):
         r'''Hashes non-reduced ratio.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''
         return super(NonreducedRatio, self).__hash__()
 
+    def __iter__(self):
+        r'''Iterates ratio.
+
+        Returns generator.
+        '''
+        return iter(self._numbers)
+
+    def __len__(self):
+        r'''Gets length of ratio.
+
+        ..  container:: example
+
+            ::
+
+                >>> ratio = mathtools.NonreducedRatio((2, 4, 2))
+                >>> len(ratio)
+                3
+
+        Returns integer.
+        '''
+        return len(self._numbers)
+
+    def __reversed__(self):
+        r'''Iterates ratio in reverse.
+
+        Returns generator.
+        '''
+        return reversed(self._numbers)
+
     ### PRIVATE PROPERTIES ###
 
     @property
-    def _repr_specification(self):
-        return self._storage_format_specification
+    def _number_coercer(self):
+        return int
 
     @property
     def _storage_format_specification(self):
         from abjad.tools import systemtools
+        positional_argument_values = (
+            self._numbers,
+            )
         return systemtools.StorageFormatSpecification(
             self,
             is_indented=False,
-            positional_argument_values=tuple(self),
+            keyword_argument_names=(),
+            positional_argument_values=positional_argument_values,
             )
+
+    ### PUBLIC METHODS ###
+
+    def count(self, expr):
+        r'''Gets count of `expr` in ratio.
+
+        Returns integer.
+        '''
+        return self._numbers.count(expr)
+
+    def index(self, expr):
+        r'''Gets index of `expr` in ratio.
+
+        Returns integer.
+        '''
+        return self._numbers.index(expr)
+
+    ### PUBLIC PROPERTIES ###
+
+    @property
+    def multipliers(self):
+        r'''Gets multipliers of nonreduced ratio.
+
+        ..  container:: example
+
+            **Example 1.** Nonreduced ratio of two numbers:
+
+            ::
+
+                >>> ratio = mathtools.NonreducedRatio((2, 4))
+                >>> ratio.multipliers
+                (Multiplier(1, 3), Multiplier(2, 3))
+
+        ..  container:: example
+
+            **Example 2.** Nonreduced ratio of three numbers:
+
+            ::
+
+                >>> ratio = mathtools.NonreducedRatio((2, 4, 2))
+                >>> ratio.multipliers
+                (Multiplier(1, 4), Multiplier(1, 2), Multiplier(1, 4))
+
+        Returns tuple of multipliers.
+        '''
+        from abjad.tools import durationtools
+        weight = sum(self.numbers) 
+        multipliers = [
+            durationtools.Multiplier((_, weight)) 
+            for _ in self.numbers
+            ]
+        multipliers = tuple(multipliers)
+        return multipliers
+
+    @property
+    def numbers(self):
+        r'''Gets numbers of nonreduced ratio.
+
+        ..  container:: example
+
+            **Example 1.** Nonreduced ratio of two numbers:
+
+            ::
+
+                >>> ratio = mathtools.NonreducedRatio((2, 4))
+                >>> ratio.numbers
+                (2, 4)
+
+        ..  container:: example
+
+            **Example 2.** Nonreduced ratio of three numbers:
+
+            ::
+
+                >>> ratio = mathtools.NonreducedRatio((2, 4, 2))
+                >>> ratio.numbers
+                (2, 4, 2)
+
+        Set to tuple of two or more numbers.
+
+        Returns tuple of two or more numbers.
+        '''
+        return self._numbers
+
+
+collections.Sequence.register(NonreducedRatio)

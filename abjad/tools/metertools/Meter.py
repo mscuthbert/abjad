@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-from abjad.tools import datastructuretools
+from abjad.tools import documentationtools
 from abjad.tools import durationtools
 from abjad.tools import indicatortools
 from abjad.tools import mathtools
@@ -11,40 +11,37 @@ from abjad.tools.abctools import AbjadObject
 
 class Meter(AbjadObject):
     '''A meter.
-    
-    Meter models the common practice understanding of beats and other levels of
-    rhythmic organization organized as a tree.
 
-    Meter tree structure corresponds to the monotonically increasing sequence
-    of factors in the numerator of a given time signature. Successively deeper
-    levels of the tree divide time by successive factors.
+    Meter models a common practice understanding of beats and other levels of
+    rhythmic organization structured as a tree. Meter structure corresponds to
+    the monotonically increasing sequence of factors in the numerator of a
+    given time signature. Successively deeper levels of the tree divide time by
+    successive factors.
 
     ..  container:: example
 
-        **Example 1.** Here's a tree corresponding to ``4/4``:
+        **Example 1.** Duple meter:
 
         ::
 
-            >>> meter = metertools.Meter((4, 4))
-
-        ::
-
+            >>> meter = metertools.Meter((2, 4))
             >>> meter
-            Meter('(4/4 (1/4 1/4 1/4 1/4))')
-
-        ::
-
+            Meter('(2/4 (1/4 1/4))')
             >>> print(meter.pretty_rtm_format)
-            (4/4 (
-                1/4
-                1/4
+            (2/4 (
                 1/4
                 1/4))
+        
+        ::
+
+            >>> graph(meter) # doctest: +SKIP
+
+        `2/4` comprises two beats.
 
     ..  container:: example
 
-        **Example 2.** Here's a tree corresponding to ``3/4``:
-        
+        **Example 2.** Triple meter:
+
         ::
 
             >>> meter = metertools.Meter((3, 4))
@@ -54,9 +51,37 @@ class Meter(AbjadObject):
                 1/4
                 1/4))
 
+        ::
+
+            >>> graph(meter) # doctest: +SKIP
+
+        `3/4` comprises three beats.
+
     ..  container:: example
 
-        **Example 3.** Here's the three corresponding to ``6/8``:
+        **Example 3.** Quadruple meter:
+
+        ::
+
+            >>> meter = metertools.Meter((4, 4))
+            >>> meter
+            Meter('(4/4 (1/4 1/4 1/4 1/4))')
+            >>> print(meter.pretty_rtm_format)
+            (4/4 (
+                1/4
+                1/4
+                1/4
+                1/4))
+        
+        ::
+
+            >>> graph(meter) # doctest: +SKIP
+
+        `4/4` comprises four beats.
+
+    ..  container:: example
+
+        **Example 3.** Compound triple meter:
 
         ::
 
@@ -72,52 +97,15 @@ class Meter(AbjadObject):
                     1/8
                     1/8))))
 
-    ..  container:: example
-
-        **Example 4.** Here's one possible tree corresponding to ``7/4``:
-
         ::
 
-            >>> meter = metertools.Meter((7, 4))
-            >>> print(meter.pretty_rtm_format)
-            (7/4 (
-                (3/4 (
-                    1/4
-                    1/4
-                    1/4))
-                (2/4 (
-                    1/4
-                    1/4))
-                (2/4 (
-                    1/4
-                    1/4))))
+            >>> graph(meter) # doctest: +SKIP
+
+        `6/8` comprises two beats of three parts each.
 
     ..  container:: example
 
-        **Example 5.** Here's another tree corresponding to ``7/4``:
-
-        ::
-
-            >>> meter = metertools.Meter(
-            ...     (7, 4),
-            ...     decrease_durations_monotonically=False,
-            ...     )
-            >>> print(meter.pretty_rtm_format)
-            (7/4 (
-                (2/4 (
-                    1/4
-                    1/4))
-                (2/4 (
-                    1/4
-                    1/4))
-                (3/4 (
-                    1/4
-                    1/4
-                    1/4))))
-
-    ..  container:: example
-
-        **Example 6.** Here's a tree corresponding to ``12/8``:
+        **Example 4.** Another compound triple meter:
 
         ::
 
@@ -141,10 +129,152 @@ class Meter(AbjadObject):
                     1/8
                     1/8))))
 
+        ::
+
+            >>> graph(meter) # doctest: +SKIP
+
+        `12/8` comprises four beats of three parts each.
+
+    ..  container:: example
+
+        **Example 5.** An asymmetric meter:
+
+        ::
+
+            >>> meter = metertools.Meter((5, 4))
+            >>> print(meter.pretty_rtm_format)
+            (5/4 (
+                (3/4 (
+                    1/4
+                    1/4
+                    1/4))
+                (2/4 (
+                    1/4
+                    1/4))))
+
+        ::
+
+            >>> graph(meter) # doctest: +SKIP
+
+        `5/4` comprises two unequal beats. By default unequal beats
+        are arranged from greatest to least.
+
+    ..  container:: example
+
+        **Example 6.** Another asymmetric meter:
+
+        ::
+
+            >>> meter = metertools.Meter((7, 4))
+            >>> print(meter.pretty_rtm_format)
+            (7/4 (
+                (3/4 (
+                    1/4
+                    1/4
+                    1/4))
+                (2/4 (
+                    1/4
+                    1/4))
+                (2/4 (
+                    1/4
+                    1/4))))
+
+        ::
+
+            >>> graph(meter) # doctest: +SKIP
+
+        `7/4` comprises three unequal beats. Beats are arranged from
+        greatest to least by default.
+
+    ..  container:: example
+
+        **Example 7.** The same asymmetric meter structured differently:
+
+        ::
+
+            >>> meter = metertools.Meter(
+            ...     (7, 4),
+            ...     decrease_durations_monotonically=False,
+            ...     )
+            >>> print(meter.pretty_rtm_format)
+            (7/4 (
+                (2/4 (
+                    1/4
+                    1/4))
+                (2/4 (
+                    1/4
+                    1/4))
+                (3/4 (
+                    1/4
+                    1/4
+                    1/4))))
+
+        ::
+
+            >>> graph(meter) # doctest: +SKIP
+
+        `7/4` with beats arragned from least to greatest.
+
+    ..  container:: example
+
+        **Example 8a.** Meter interpreted by default as containing two compound
+        beats:
+
+        ::
+
+            >>> meter = metertools.Meter((6, 4))
+            >>> meter
+            Meter('(6/4 ((3/4 (1/4 1/4 1/4)) (3/4 (1/4 1/4 1/4))))')
+            >>> print(meter.pretty_rtm_format)
+            (6/4 (
+                (3/4 (
+                    1/4
+                    1/4
+                    1/4))
+                (3/4 (
+                    1/4
+                    1/4
+                    1/4))))
+        
+        ::
+
+            >>> graph(meter) # doctest: +SKIP
+
+        **Example 8b.** Same meter customized to contain four compound beats:
+
+        ::
+
+            >>> parser = rhythmtreetools.RhythmTreeParser()
+            >>> meter = metertools.Meter('(6/4 ((3/8 (1/8 1/8 1/8)) (3/8 (1/8 1/8 1/8)) (3/8 (1/8 1/8 1/8)) (3/8 (1/8 1/8 1/8))))')
+            >>> meter
+            Meter('(6/4 ((3/8 (1/8 1/8 1/8)) (3/8 (1/8 1/8 1/8)) (3/8 (1/8 1/8 1/8)) (3/8 (1/8 1/8 1/8))))')
+            >>> print(meter.pretty_rtm_format)
+            (6/4 (
+                (3/8 (
+                    1/8
+                    1/8
+                    1/8))
+                (3/8 (
+                    1/8
+                    1/8
+                    1/8))
+                (3/8 (
+                    1/8
+                    1/8
+                    1/8))
+                (3/8 (
+                    1/8
+                    1/8
+                    1/8))))
+        
+        ::
+
+            >>> graph(meter) # doctest: +SKIP
+
     Prime divisions greater than ``3`` are converted to sequences of ``2``
-    and ``3`` summing to that prime.
-    
-    ``5`` becomes ``3+2`` and ``7`` becomes ``3+2+2`` in the examples above.
+    and ``3`` summing to that prime. Summands are arranged from greatest
+    to least by default. This means that ``5`` becomes ``3+2`` and ``7`` 
+    becomes ``3+2+2`` in the examples above.
     '''
 
     ### CLASS VARIABLES ###
@@ -153,25 +283,35 @@ class Meter(AbjadObject):
         '_decrease_durations_monotonically',
         '_denominator',
         '_numerator',
+        '_preferred_boundary_depth',
         '_root_node',
         )
 
     ### INITIALIZER ###
 
-    def __init__(self, arg=None, decrease_durations_monotonically=True):
+    def __init__(
+        self, 
+        arg=None, 
+        decrease_durations_monotonically=True,
+        preferred_boundary_depth=None,
+        ):
 
         arg = arg or (4, 4)
+        assert isinstance(preferred_boundary_depth, (int, type(None)))
+        self._preferred_boundary_depth = preferred_boundary_depth
 
         def recurse(
-            node, 
-            factors, 
-            denominator, 
+            node,
+            factors,
+            denominator,
             decrease_durations_monotonically,
             ):
             if factors:
                 factor, factors = factors[0], factors[1:]
-                preprolated_duration = node.preprolated_duration.__div__(factor)
-                if factor in (2, 3, 4, 5):
+                preprolated_duration = \
+                    node.preprolated_duration.__div__(factor)
+                #if factor in (2, 3, 4, 5):
+                if factor in (2, 3, 4):
                     if factors:
                         for _ in range(factor):
                             child = rhythmtreetools.RhythmTreeContainer(
@@ -243,8 +383,8 @@ class Meter(AbjadObject):
             numerator = root.preprolated_duration.numerator
             denominator = root.preprolated_duration.denominator
 
-        elif isinstance(arg, (tuple, scoretools.Measure)) or \
-            (hasattr(arg, 'numerator') and hasattr(arg, 'denominator')):
+        elif (isinstance(arg, (tuple, scoretools.Measure)) or
+            (hasattr(arg, 'numerator') and hasattr(arg, 'denominator'))):
             if isinstance(arg, tuple):
                 fraction = mathtools.NonreducedFraction(arg)
             elif isinstance(arg, scoretools.Measure):
@@ -296,14 +436,20 @@ class Meter(AbjadObject):
     def __format__(self, format_specification=''):
         r'''Formats meter.
 
+        ..  container:: example
+
+            **Example 1.** Gets storage format of ``7/4``:
+
+            ::
+
+                >>> meter = metertools.Meter((7, 4))
+                >>> print(format(meter))
+                metertools.Meter(
+                    '(7/4 ((3/4 (1/4 1/4 1/4)) (2/4 (1/4 1/4)) (2/4 (1/4 1/4))))'
+                    )
+
         Set `format_specification` to `''` or `'storage'`.
         Interprets `''` equal to `'storage'`.
-
-            >>> meter = metertools.Meter((7, 4))
-            >>> print(format(meter))
-            metertools.Meter(
-                '(7/4 ((3/4 (1/4 1/4 1/4)) (2/4 (1/4 1/4)) (2/4 (1/4 1/4))))'
-                )
 
         Returns string.
         '''
@@ -312,16 +458,31 @@ class Meter(AbjadObject):
             return systemtools.StorageFormatManager.get_storage_format(self)
         return str(self)
 
-    def __graph__(self):
+    def __graph__(self, **kwargs):
         r'''Gets Graphviz format of meter.
 
         ..  container:: example
 
+            **Example 1.** Graphs ``7/4``:
+
             ::
 
-                >>> graph = meter.__graph__()
-                >>> print(str(graph))
+                >>> meter = metertools.Meter((7, 4))
+                >>> meter_graph = meter.__graph__()
+                >>> graph(meter_graph) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(str(meter_graph))
                 digraph G {
+                    graph [bgcolor=transparent,
+                        fontname=Arial,
+                        penwidth=2,
+                        truecolor=true];
+                    node [fontname=Arial,
+                        fontsize=12,
+                        penwidth=2];
+                    edge [penwidth=2];
                     node_0 [label="7/4",
                         shape=triangle];
                     node_1 [label="3/4",
@@ -344,25 +505,183 @@ class Meter(AbjadObject):
                         shape=box];
                     node_10 [label="1/4",
                         shape=box];
+                    subgraph cluster_cluster_offsets {
+                        graph [style=rounded];
+                        node_11_0 [color=white,
+                            fillcolor=black,
+                            fontcolor=white,
+                            fontname="Arial bold",
+                            label="{ <f_0_0> 0 | <f_0_1> +++ }",
+                            shape=Mrecord,
+                            style=filled];
+                        node_11_1 [color=white,
+                            fillcolor=black,
+                            fontcolor=white,
+                            fontname="Arial bold",
+                            label="{ <f_0_0> 1/4 | <f_0_1> + }",
+                            shape=Mrecord,
+                            style=filled];
+                        node_11_2 [color=white,
+                            fillcolor=black,
+                            fontcolor=white,
+                            fontname="Arial bold",
+                            label="{ <f_0_0> 1/2 | <f_0_1> + }",
+                            shape=Mrecord,
+                            style=filled];
+                        node_11_3 [color=white,
+                            fillcolor=black,
+                            fontcolor=white,
+                            fontname="Arial bold",
+                            label="{ <f_0_0> 3/4 | <f_0_1> ++ }",
+                            shape=Mrecord,
+                            style=filled];
+                        node_11_4 [color=white,
+                            fillcolor=black,
+                            fontcolor=white,
+                            fontname="Arial bold",
+                            label="{ <f_0_0> 1 | <f_0_1> + }",
+                            shape=Mrecord,
+                            style=filled];
+                        node_11_5 [color=white,
+                            fillcolor=black,
+                            fontcolor=white,
+                            fontname="Arial bold",
+                            label="{ <f_0_0> 5/4 | <f_0_1> ++ }",
+                            shape=Mrecord,
+                            style=filled];
+                        node_11_6 [color=white,
+                            fillcolor=black,
+                            fontcolor=white,
+                            fontname="Arial bold",
+                            label="{ <f_0_0> 3/2 | <f_0_1> + }",
+                            shape=Mrecord,
+                            style=filled];
+                        node_11_7 [label="{ <f_0_0> 7/4 | <f_0_1> +++ }",
+                            shape=Mrecord];
+                    }
                     node_0 -> node_1;
                     node_0 -> node_5;
                     node_0 -> node_8;
                     node_1 -> node_2;
                     node_1 -> node_3;
                     node_1 -> node_4;
+                    node_2 -> node_11_0 [style=dotted];
+                    node_2 -> node_11_1 [style=dotted];
+                    node_3 -> node_11_1 [style=dotted];
+                    node_3 -> node_11_2 [style=dotted];
+                    node_4 -> node_11_2 [style=dotted];
+                    node_4 -> node_11_3 [style=dotted];
                     node_5 -> node_6;
                     node_5 -> node_7;
-                    node_8 -> node_10;
+                    node_6 -> node_11_3 [style=dotted];
+                    node_6 -> node_11_4 [style=dotted];
+                    node_7 -> node_11_4 [style=dotted];
+                    node_7 -> node_11_5 [style=dotted];
                     node_8 -> node_9;
+                    node_8 -> node_10;
+                    node_9 -> node_11_5 [style=dotted];
+                    node_9 -> node_11_6 [style=dotted];
+                    node_10 -> node_11_6 [style=dotted];
+                    node_10 -> node_11_7 [style=dotted];
                 }
-
-            ::
-
-                >>> topleveltools.graph(meter) # doctest: +SKIP
 
         Returns Graphviz graph.
         '''
-        return self.root_node.__graph__()
+        def make_offset_node(
+            offset,
+            leaf_one=None,
+            leaf_two=None,
+            is_last=False,
+            ):
+            if not is_last:
+                offset_node = documentationtools.GraphvizNode(
+                    attributes={
+                        'shape': 'Mrecord',
+                        'style': 'filled',
+                        'color': 'white',
+                        'fontname': 'Arial bold',
+                        'fontcolor': 'white',
+                        'fillcolor': 'black',
+                        },
+                    )
+            else:
+                offset_node = documentationtools.GraphvizNode(
+                    attributes={
+                        'shape': 'Mrecord',
+                        },
+                    )
+            offset_field = documentationtools.GraphvizField(
+                label=str(offset),
+                )
+            weight_field = documentationtools.GraphvizField(
+                label='+' * offsets[offset],
+                )
+            group = documentationtools.GraphvizGroup()
+            group.extend([offset_field, weight_field])
+            offset_node.append(group)
+            offset_subgraph.append(offset_node)
+            leaf_one_node = node_mapping[leaf_one]
+            edge = documentationtools.GraphvizEdge(
+                attributes={'style': 'dotted'},
+                )
+            edge(leaf_one_node, offset_node)
+            if leaf_two:
+                leaf_two_node = node_mapping[leaf_two]
+                edge = documentationtools.GraphvizEdge(
+                    attributes={'style': 'dotted'},
+                    )
+                edge(leaf_two_node, offset_node)
+        from abjad.tools import metertools
+        offsets = metertools.MetricAccentKernel.count_offsets_in_expr(
+            sequencetools.flatten_sequence(self.depthwise_offset_inventory))
+        graph = documentationtools.GraphvizGraph(
+            name='G',
+            attributes={
+                'bgcolor': 'transparent',
+                'fontname': 'Arial',
+                'penwidth': 2,
+                'truecolor': True,
+                },
+            edge_attributes={
+                'penwidth': 2,
+                },
+            node_attributes={
+                'fontname': 'Arial',
+                'fontsize': 12,
+                'penwidth': 2,
+                },
+            )
+        node_mapping = {}
+        for node in self._root_node.nodes:
+            graphviz_node = documentationtools.GraphvizNode()
+            graphviz_node.attributes['label'] = str(node.preprolated_duration)
+            if isinstance(node, rhythmtreetools.RhythmTreeContainer):
+                graphviz_node.attributes['shape'] = 'triangle'
+            else:
+                graphviz_node.attributes['shape'] = 'box'
+            graph.append(graphviz_node)
+            node_mapping[node] = graphviz_node
+            if node.parent is not None:
+                documentationtools.GraphvizEdge()(
+                    node_mapping[node.parent],
+                    node_mapping[node],
+                    )
+        leaves = self._root_node.leaves
+        offset = leaves[0].start_offset
+        offset_subgraph = documentationtools.GraphvizSubgraph(
+            name='cluster_offsets',
+            attributes={
+                'style': 'rounded',
+                },
+            )
+        graph.append(offset_subgraph)
+        make_offset_node(offset, leaves[0])
+        for one, two in sequencetools.iterate_sequence_nwise(leaves):
+            offset = one.stop_offset
+            make_offset_node(offset, one, two)
+        offset = leaves[-1].stop_offset
+        make_offset_node(offset, leaves[-1], is_last=True)
+        return graph
 
     def __hash__(self):
         r'''Hashes meter.
@@ -372,21 +691,25 @@ class Meter(AbjadObject):
     def __iter__(self):
         r'''Iterates meter.
 
-        ::
+        ..  container:: example
 
-            >>> meter = metertools.Meter((5, 4))
+            **Example 1.** Iterates ``5/4``:
 
-        ::
+            ::
 
-            >>> for x in meter:
-            ...    x
-            ...
-            (NonreducedFraction(0, 4), NonreducedFraction(1, 4))
-            (NonreducedFraction(1, 4), NonreducedFraction(2, 4))
-            (NonreducedFraction(2, 4), NonreducedFraction(3, 4))
-            (NonreducedFraction(3, 4), NonreducedFraction(4, 4))
-            (NonreducedFraction(4, 4), NonreducedFraction(5, 4))
-            (NonreducedFraction(0, 4), NonreducedFraction(5, 4))
+
+                >>> meter = metertools.Meter((5, 4))
+                >>> for x in meter:
+                ...    x
+                ...
+                (NonreducedFraction(0, 4), NonreducedFraction(1, 4))
+                (NonreducedFraction(1, 4), NonreducedFraction(2, 4))
+                (NonreducedFraction(2, 4), NonreducedFraction(3, 4))
+                (NonreducedFraction(0, 4), NonreducedFraction(3, 4))
+                (NonreducedFraction(3, 4), NonreducedFraction(4, 4))
+                (NonreducedFraction(4, 4), NonreducedFraction(5, 4))
+                (NonreducedFraction(3, 4), NonreducedFraction(5, 4))
+                (NonreducedFraction(0, 4), NonreducedFraction(5, 4))
 
         Yields pairs.
         '''
@@ -407,6 +730,31 @@ class Meter(AbjadObject):
                 ).with_denominator(self.denominator)
             yield start_offset, stop_offset
 
+    def __str__(self):
+        r'''Gets string representation of meter.
+
+        ..  container:: example
+
+            **Example 1.** Gets string representation of meters over ``8``:
+
+            ::
+
+                >>> for numerator in range(1, 9):
+                ...     meter = metertools.Meter((numerator, 8))
+                ...     print(str(meter))
+                1/8
+                2/8
+                3/8
+                4/8
+                5/8
+                6/8
+                7/8
+                8/8
+
+        Returns string.
+        '''
+        return '{}/{}'.format(self.numerator, self.denominator)
+
     ### PRIVATE PROPERTIES ###
 
     @property
@@ -421,9 +769,6 @@ class Meter(AbjadObject):
             )
 
     ### PRIVATE METHODS ###
-
-    def _get_recurser(self):
-        return recurse
 
     @staticmethod
     def _make_gridded_test_rhythm(grid_length, rhythm_number, denominator=16):
@@ -444,7 +789,7 @@ class Meter(AbjadObject):
                 ...         4, rhythm_number, denominator=4)
                 ...     measure = Measure((4, 4), notes)
                 ...     print('{}\t{}'.format(rhythm_number, str(measure)))
-                ... 
+                ...
                 0	Measure((4, 4), "c'1")
                 1	Measure((4, 4), "c'2. c'4")
                 2	Measure((4, 4), "c'2 c'4 c'4")
@@ -466,7 +811,7 @@ class Meter(AbjadObject):
                 ...         5, rhythm_number, denominator=4)
                 ...     measure = Measure((5, 4), notes)
                 ...     print('{}\t{}'.format(rhythm_number, str(measure)))
-                ... 
+                ...
                 0	Measure((5, 4), "c'1 ~ c'4")
                 1	Measure((5, 4), "c'1 c'4")
                 2	Measure((5, 4), "c'2. c'4 c'4")
@@ -522,8 +867,42 @@ class Meter(AbjadObject):
 
         ..  container:: example
 
-            **Example 1.** Metrical hiearchy with durations that increase
-            monotonically:
+            **Example 1.** An asymmetric meter with beats arranged greatest to
+            least:
+
+            ::
+
+                >>> meter = metertools.Meter(
+                ...     (7, 4),
+                ...     decrease_durations_monotonically=True,
+                ...     )
+
+            ::
+
+                >>> meter.decrease_durations_monotonically
+                True
+
+            ::
+
+                >>> print(meter.pretty_rtm_format)
+                (7/4 (
+                    (3/4 (
+                        1/4
+                        1/4
+                        1/4))
+                    (2/4 (
+                        1/4
+                        1/4))
+                    (2/4 (
+                        1/4
+                        1/4))))
+
+            This is default beahvior.
+
+        ..  container:: example
+
+            **Example 2.** The same asymmetric meter with unequal beats 
+            arranged least to greatest:
 
             ::
 
@@ -552,37 +931,6 @@ class Meter(AbjadObject):
                         1/4
                         1/4))))
 
-        ..  container:: example
-
-            **Example 2.** Meter with durations that
-            decrease monotonically:
-
-            ::
-
-                >>> meter = \
-                ...     metertools.Meter((7, 4),
-                ...     decrease_durations_monotonically=True)
-
-            ::
-
-                >>> meter.decrease_durations_monotonically
-                True
-
-            ::
-
-                >>> print(meter.pretty_rtm_format)
-                (7/4 (
-                    (3/4 (
-                        1/4
-                        1/4
-                        1/4))
-                    (2/4 (
-                        1/4
-                        1/4))
-                    (2/4 (
-                        1/4
-                        1/4))))
-
         Returns boolean.
         '''
         return self._decrease_durations_monotonically
@@ -595,6 +943,7 @@ class Meter(AbjadObject):
 
             ::
 
+                >>> meter = metertools.Meter((7, 4))
                 >>> meter.denominator
                 4
 
@@ -620,14 +969,12 @@ class Meter(AbjadObject):
         Returns dictionary.
         '''
         inventory = []
-        for depth, nodes in sorted(
-            self.root_node.depthwise_inventory.items()):
-            offsets = []
+        all_offsets = set()
+        all_offsets.add(durationtools.Offset(self.numerator, self.denominator))
+        for depth, nodes in sorted(self.root_node.depthwise_inventory.items()):
             for node in nodes:
-                offsets.append(durationtools.Offset(node.start_offset))
-            offsets.append(
-                durationtools.Offset(self.numerator, self.denominator))
-            inventory.append(tuple(offsets))
+                all_offsets.add(durationtools.Offset(node.start_offset))
+            inventory.append(tuple(sorted(all_offsets)))
         return tuple(inventory)
 
     @property
@@ -640,8 +987,6 @@ class Meter(AbjadObject):
 
                 >>> meter.duration
                 Duration(7, 4)
-
-        ..  todo:: rename to just ``duration``.
 
         Returns duration.
         '''
@@ -664,6 +1009,129 @@ class Meter(AbjadObject):
             self.root_node.preprolated_duration)
 
     @property
+    def is_compound(self):
+        r'''Is true when meter is compound. Otherwise false.
+
+        ..  container:: example
+
+            **Example 1.** Compound meters written over ``4``:
+
+            ::
+
+                >>> for numerator in range(1, 13):
+                ...     meter = metertools.Meter((numerator, 4))
+                ...     string = True if meter.is_compound else ''
+                ...     print(str(meter), string)
+                ...
+                1/4 
+                2/4 
+                3/4 
+                4/4 
+                5/4 
+                6/4     True
+                7/4 
+                8/4 
+                9/4     True
+                10/4 
+                11/4 
+                12/4    True
+
+        ..  container:: example
+
+            **Example 2.** Compound meters written over ``8``:
+
+            ::
+
+                >>> for numerator in range(1, 13):
+                ...     meter = metertools.Meter((numerator, 8))
+                ...     string = True if meter.is_compound else ''
+                ...     print(str(meter), string)
+                ...
+                1/8 
+                2/8 
+                3/8 
+                4/8 
+                5/8 
+                6/8     True
+                7/8 
+                8/8 
+                9/8     True
+                10/8 
+                11/8 
+                12/8    True
+
+        Compound meters defined equal to those meters with a numerator
+        divisible by ``3`` (but not equal to ``3``).
+
+        Returns true or false.
+        '''
+        if 3 in mathtools.divisors(self.numerator):
+            if not self.numerator == 3:
+                return True
+        return False
+
+    @property
+    def is_simple(self):
+        r'''Is true when meter is simple. Otherwise false.
+
+        ..  container:: example
+
+            **Example 1.** Simple meters written over ``4``:
+
+            ::
+
+                >>> for numerator in range(1, 13):
+                ...     meter = metertools.Meter((numerator, 4))
+                ...     string = True if meter.is_simple else ''
+                ...     print(str(meter), string)
+                ...
+                1/4     True
+                2/4     True
+                3/4     True
+                4/4     True
+                5/4     True
+                6/4 
+                7/4     True
+                8/4     True
+                9/4 
+                10/4    True
+                11/4    True
+                12/4 
+
+        ..  container:: example
+
+            **Example 2.** Simple meters written over ``8``:
+
+            ::
+
+                >>> for numerator in range(1, 13):
+                ...     meter = metertools.Meter((numerator, 8))
+                ...     string = True if meter.is_simple else ''
+                ...     print(str(meter), string)
+                ...
+                1/8     True
+                2/8     True
+                3/8     True
+                4/8     True
+                5/8     True
+                6/8 
+                7/8     True
+                8/8     True
+                9/8 
+                10/8    True
+                11/8    True
+                12/8 
+
+        Simple meters defined equal to those meters with a numerator
+        not divisible by ``3``.
+        
+        Meters with numerator equal to ``3`` are also defined as simple.
+
+        Returns true or false.
+        '''
+        return not self.is_compound
+
+    @property
     def numerator(self):
         r'''Gets numerator of meter.
 
@@ -671,6 +1139,7 @@ class Meter(AbjadObject):
 
             ::
 
+                >>> meter = metertools.Meter((7, 4))
                 >>> meter.numerator
                 7
 
@@ -679,21 +1148,40 @@ class Meter(AbjadObject):
         return self._numerator
 
     @property
-    def preprolated_duration(self):
-        r'''Gets preprolated duration of meter.
+    def preferred_boundary_depth(self):
+        r'''Gets preferred boundary depth of meter.
 
         ..  container:: example
 
+            **Example 1.** No preferred boundary depth:
+
             ::
 
-                >>> meter.preprolated_duration
-                Duration(7, 4)
+                >>> metertools.Meter((6, 8)).preferred_boundary_depth is None
+                True
 
-        ..  todo:: rename to just ``duration``.
+        ..  container:: example
 
-        Returns duration.
+            **Example 2.** Customized preferred boundary depth:
+
+            ::
+
+                >>> meter = metertools.Meter(
+                ...     (6, 8),
+                ...     preferred_boundary_depth=1,
+                ...     )
+                >>> meter.preferred_boundary_depth
+                1
+
+        Used by ``mutate().rewrite_meter()``.
+
+        Defaults to none.
+
+        Set to integer or none.
+
+        Returns integer or none.
         '''
-        return durationtools.Duration(self.numerator, self.denominator)
+        return self._preferred_boundary_depth
 
     @property
     def pretty_rtm_format(self):
@@ -703,6 +1191,7 @@ class Meter(AbjadObject):
 
             ::
 
+                >>> meter = metertools.Meter((7, 4))
                 >>> print(meter.pretty_rtm_format)
                 (7/4 (
                     (3/4 (
@@ -728,6 +1217,7 @@ class Meter(AbjadObject):
 
             ::
 
+                >>> meter = metertools.Meter((7, 4))
                 >>> print(format(meter.root_node))
                 rhythmtreetools.RhythmTreeContainer(
                     children=(
@@ -790,6 +1280,7 @@ class Meter(AbjadObject):
 
             ::
 
+                >>> meter = metertools.Meter((7, 4))
                 >>> meter.rtm_format
                 '(7/4 ((3/4 (1/4 1/4 1/4)) (2/4 (1/4 1/4)) (2/4 (1/4 1/4))))'
 
@@ -805,7 +1296,7 @@ class Meter(AbjadObject):
         meters,
         denominator=32,
         discard_final_orphan_downbeat=True,
-        maximum_repetitions=None,
+        maximum_run_length=None,
         starting_offset=None,
         ):
         r'''Finds the best-matching sequence of meters for the offsets
@@ -828,7 +1319,7 @@ class Meter(AbjadObject):
                 >>> for x in metertools.Meter.fit_meters_to_expr(
                 ...     expr, meters):
                 ...     print(x.implied_time_signature)
-                ... 
+                ...
                 4/4
                 4/4
                 4/4
@@ -844,7 +1335,7 @@ class Meter(AbjadObject):
                 >>> for x in metertools.Meter.fit_meters_to_expr(
                 ...     expr, meters):
                 ...     print(x.implied_time_signature)
-                ... 
+                ...
                 3/4
                 4/4
                 3/4
@@ -862,7 +1353,7 @@ class Meter(AbjadObject):
         from abjad.tools import metertools
         session = metertools.MeterFittingSession(
             kernel_denominator=denominator,
-            maximum_repetitions=maximum_repetitions,
+            maximum_run_length=maximum_run_length,
             meters=meters,
             offset_counter=expr,
             )
@@ -876,8 +1367,8 @@ class Meter(AbjadObject):
         ):
         r'''Generates a dictionary of all offsets in a meter up
         to `denominator`.
-        
-        Keys are the offsets and the values are the normalized weights of 
+
+        Keys are the offsets and the values are the normalized weights of
         those offsets.
 
         ..  container:: example
@@ -888,7 +1379,7 @@ class Meter(AbjadObject):
                 >>> kernel = meter.generate_offset_kernel_to_denominator(8)
                 >>> for offset, weight in sorted(kernel.kernel.items()):
                 ...     print('{!s}\t{!s}'.format(offset, weight))
-                ... 
+                ...
                 0       3/16
                 1/8     1/16
                 1/4     1/8
@@ -936,79 +1427,3 @@ class Meter(AbjadObject):
                 kernel[offset] = durationtools.Multiplier(response, total)
 
         return metertools.MetricAccentKernel(kernel)
-
-    def get_durations_at_depth(self, depth=0):
-        r'''Gets durations at `depth` in meter.
-
-        ..  container:: example
-
-            **Example 1.** Gets durations at depth ``0`` in ``7/4``:
-
-            ::
-
-                >>> meter = metertools.Meter((7, 4))
-                >>> durations = meter.get_durations_at_depth(0)
-                >>> for duration in durations:
-                ...     duration
-                Duration(7, 4)
-
-            Output equals the duration of the meter.
-
-        ..  container:: example
-
-            **Example 2.** Gets durations at depth ``1`` in ``7/4``:
-
-            ::
-
-                >>> meter = metertools.Meter((7, 4))
-                >>> durations = meter.get_durations_at_depth(1)
-                >>> for duration in durations:
-                ...     duration
-                Duration(3, 4)
-                Duration(1, 2)
-                Duration(1, 2)
-
-            Output equals the durations of top-level beat groups.
-
-        ..  container:: example
-
-            **Example 3.** Gets durations at depth ``2`` in ``7/4``:
-
-            ::
-
-                >>> meter = metertools.Meter((7, 4))
-                >>> durations = meter.get_durations_at_depth(2)
-                >>> for duration in durations:
-                ...     duration
-                Duration(1, 4)
-                Duration(1, 4)
-                Duration(1, 4)
-                Duration(1, 4)
-                Duration(1, 4)
-                Duration(1, 4)
-                Duration(1, 4)
-
-            Output equals the durations of beats.
-
-        ..  container:: example
-
-            **Example 4.** Raises exception at depths greater than ``2``:
-
-            ::
-
-                >>> import pytest
-                >>> meter = metertools.Meter((7, 4))
-                >>> statement = 'meter.get_durations_at_depth(99)'
-                >>> assert pytest.raises(Exception, statement)
-
-        Returns nonempty list of durations.
-        '''
-        offset_inventory = self.depthwise_offset_inventory
-        offsets = offset_inventory[depth]
-        assert 2 <= len(offsets)
-        durations = []
-        pairs = sequencetools.iterate_sequence_nwise(offsets, n=2)
-        for start_offset, stop_offset in pairs:
-            duration = stop_offset - start_offset
-            durations.append(duration)
-        return durations

@@ -19,7 +19,7 @@ class MeterFittingSession(AbjadValueObject):
         '_kernel_denominator',
         '_kernels',
         '_longest_kernel',
-        '_maximum_repetitions',
+        '_maximum_run_length',
         '_meters',
         '_offset_counter',
         '_ordered_offsets',
@@ -35,16 +35,16 @@ class MeterFittingSession(AbjadValueObject):
     def __init__(
         self,
         kernel_denominator=32,
-        maximum_repetitions=None,
+        maximum_run_length=None,
         meters=None,
         offset_counter=None,
         ):
         from abjad.tools import metertools
         self._cached_offset_counters = {}
-        if maximum_repetitions is not None:
-            maximum_repetitions = int(maximum_repetitions)
-            assert 0 < maximum_repetitions
-        self._maximum_repetitions = maximum_repetitions
+        if maximum_run_length is not None:
+            maximum_run_length = int(maximum_run_length)
+            assert 0 < maximum_run_length
+        self._maximum_run_length = maximum_run_length
         if offset_counter:
             self._offset_counter = \
                 metertools.MetricAccentKernel.count_offsets_in_expr(
@@ -72,7 +72,10 @@ class MeterFittingSession(AbjadValueObject):
 
     def __call__(self):
         r'''Fits meters.
+
+        Returns meter inventory.
         '''
+        from abjad.tools import metertools
         selected_kernels = []
         current_offset = durationtools.Offset(0)
         while current_offset < self.ordered_offsets[-1]:
@@ -85,11 +88,11 @@ class MeterFittingSession(AbjadValueObject):
                     winning_kernel = selected_kernels[-1]
             else:
                 for kernel in kernels:
-                    if self.maximum_repetitions and \
+                    if self.maximum_run_length and \
                         1 < len(kernels) and \
-                        self.maximum_repetitions < len(selected_kernels):
+                        self.maximum_run_length <= len(selected_kernels):
                         last_n_kernels = \
-                            selected_kernels[-self.maximum_repetitions:]
+                            selected_kernels[-self.maximum_run_length:]
                         if len(set(last_n_kernels)) == 1:
                             if kernel == last_n_kernels[-1]:
                                 continue
@@ -109,7 +112,8 @@ class MeterFittingSession(AbjadValueObject):
                 winning_kernel = kernel_scores[-1].kernel
             selected_kernels.append(winning_kernel)
             current_offset += winning_kernel.duration
-        selected_meters = tuple(self.kernels[_] for _ in selected_kernels)
+        selected_meters = (self.kernels[_] for _ in selected_kernels)
+        selected_meters = metertools.MeterInventory(selected_meters)
         return selected_meters
 
     ### PRIVATE METHODS ###
@@ -183,12 +187,12 @@ class MeterFittingSession(AbjadValueObject):
         return self._longest_kernel
 
     @property
-    def maximum_repetitions(self):
+    def maximum_run_length(self):
         r'''Gets maximum meter repetitions.
 
         Returns integer or none.
         '''
-        return self._maximum_repetitions
+        return self._maximum_run_length
 
     @property
     def meters(self):

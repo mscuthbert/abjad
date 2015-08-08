@@ -10,7 +10,6 @@ from abjad.tools import pitchtools
 from abjad.tools import scoretools
 from abjad.tools import sequencetools
 from abjad.tools import spannertools
-from abjad.tools import systemtools
 from abjad.tools.lilypondparsertools._parse import _parse
 from abjad.tools.lilypondparsertools._parse_debug import _parse_debug
 from abjad.tools.topleveltools import attach
@@ -23,7 +22,7 @@ ply.yacc.LRParser._lilypond_patch_parse_debug = _parse_debug
 
 
 class LilyPondParser(abctools.Parser):
-    r'''Parses a subset of LilyPond input syntax.
+    r"""A LilyPond syntax parser.
 
     ::
 
@@ -38,7 +37,90 @@ class LilyPondParser(abctools.Parser):
             fs'2 -\fermata )
         }
 
-    LilyPondParser defaults to English note names, but any of the other
+    The LilyPond parser understands most spanners, articulations and dynamics:
+
+    ::
+
+        >>> string = r'''
+        ... \new Staff {
+        ...     c'8 \f \> (
+        ...     d' -_ [
+        ...     e' ^>
+        ...     f' \ppp \<
+        ...     g' \startTrillSpan \(
+        ...     a' \)
+        ...     b' ] \stopTrillSpan
+        ...     c'' ) \accent \sfz
+        ... }
+        ... '''
+        >>> result = parser(string)
+        >>> show(result) # doctest: +SKIP
+
+    The LilyPond parser understands contexts and markup:
+
+    ::
+
+        >>> string = r'''\new Score <<
+        ...     \new Staff = "Treble Staff" {
+        ...         \new Voice = "Treble Voice" {
+        ...             c' ^\markup { \bold Treble! }
+        ...         }
+        ...     }
+        ...     \new Staff = "Bass Staff" {
+        ...         \new Voice = "Bass Voice" {
+        ...             \clef bass
+        ...             c, _\markup { \italic Bass! }
+        ...         }
+        ...     }
+        ... >>
+        ... '''
+        >>> result = parser(string)
+        >>> show(result) # doctest: +SKIP
+
+    The LilyPond parser also understands certain aspects of LilyPond file
+    layouts, such as header blocks:
+
+    ::
+
+        >>> string = r'''
+        ... \header {
+        ...     composername = "Foo von Bar"
+        ...     composer = \markup { by \bold \composername }
+        ...     title = \markup { The ballad of \composername }
+        ...     tagline = \markup { "" }
+        ... }
+        ... \score {
+        ...     \new Staff {
+        ...         \time 3/4
+        ...         g' ( b' d'' )
+        ...         e''4. ( c''8 c'4 )
+        ...     }
+        ... }
+        ... '''
+        >>> result = parser(string)
+        >>> show(result) # doctest: +SKIP
+
+    The LilyPond parser supports a small number of LilyPond music functions,
+    such as \relative and \transpose.
+
+    ..  note::
+
+        Music functions which mutate the score during compilation result in a
+        normalized Abjad score structure. The resulting structure corresponds
+        to the music as it appears on the page, rather than as it was input to
+        the parser:
+
+    ::
+
+        >>> string = r'''
+        ... \new Staff \relative c {
+        ...     c32 d e f g a b c d e f g a b c d e f g a b c
+        ... }
+        ... '''
+        >>> result = parser(string)
+        >>> show(result) # doctest: +SKIP
+
+    The LilyPond parser defaults to English note names, but any of the other
     languages supported by LilyPond may be used:
 
     ::
@@ -98,7 +180,7 @@ class LilyPondParser(abctools.Parser):
       ``\revert``, ``\set``, ``\unset``, and ``\once``
     - Music functions which generate or extensively mutate musical structures
     - Embedded Scheme statements (anything beginning with ``#``)
-    '''
+    """
 
     ### CLASS VARIABLES ###
 
@@ -543,7 +625,11 @@ class LilyPondParser(abctools.Parser):
                 previous_leaf = x
                 container.append(x)
             else:
-                if isinstance(x, indicatortools.BarLine):
+                if isinstance(x, (
+                    indicatortools.BarLine,
+                    indicatortools.PageBreak,
+                    indicatortools.SystemBreak,
+                    )):
                     apply_backward.append(x)
                 elif isinstance(x, indicatortools.LilyPondCommand):
                     if x.name in ('breathe',):
@@ -580,7 +666,7 @@ class LilyPondParser(abctools.Parser):
                 groups.append(list(group))
         # without voice separators
         if 1 == len(groups):
-            assert all(isinstance(x, scoretools.Context) for x in groups[0])
+            #assert all(isinstance(x, scoretools.Context) for x in groups[0])
             container.extend(groups[0])
         # with voice separators
         else:
@@ -658,7 +744,9 @@ class LilyPondParser(abctools.Parser):
                 indicatortools.BarLine,
                 indicatortools.Dynamic,
                 indicatortools.LilyPondCommand,
+                indicatortools.PageBreak,
                 indicatortools.StemTremolo,
+                indicatortools.SystemBreak,
                 markuptools.Markup,
                 )
             if hasattr(post_event, '_attach'):
@@ -738,6 +826,8 @@ class LilyPondParser(abctools.Parser):
             return indicatortools.Dynamic(lookup['text'])
         elif name == 'LaissezVibrerEvent':
             return indicatortools.LilyPondCommand('laissezVibrer', 'after')
+        elif name == 'LineBreakEvent':
+            return indicatortools.SystemBreak()
         event = lilypondparsertools.LilyPondEvent(name)
         if 'span-direction' in lookup:
             if lookup['span-direction'] == -1:

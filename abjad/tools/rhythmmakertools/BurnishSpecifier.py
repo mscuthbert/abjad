@@ -1,8 +1,6 @@
 # -*- encoding: utf-8 -*-
 from abjad.tools import mathtools
-from abjad.tools import sequencetools
 from abjad.tools.abctools import AbjadValueObject
-from abjad.tools.topleveltools import new
 
 
 class BurnishSpecifier(AbjadValueObject):
@@ -105,6 +103,8 @@ class BurnishSpecifier(AbjadValueObject):
 
     ### CLASS VARIABLES ###
 
+    __documentation_section__ = 'Specifiers'
+
     __slots__ = (
         '_left_lengths',
         '_lefts',
@@ -144,10 +144,10 @@ class BurnishSpecifier(AbjadValueObject):
         self._rights = right_classes
         self._left_lengths = left_counts
         self._right_lengths = right_counts
-        if outer_divisions_only and left_counts:
-            assert len(left_counts) <= 1, repr(left_counts)
-        if outer_divisions_only and right_counts:
-            assert len(right_counts) <= 1, repr(right_counts)
+#        if outer_divisions_only and left_counts:
+#            assert len(left_counts) <= 1, repr(left_counts)
+#        if outer_divisions_only and right_counts:
+#            assert len(right_counts) <= 1, repr(right_counts)
 
     ### SPECIAL METHODS ###
 
@@ -228,7 +228,7 @@ class BurnishSpecifier(AbjadValueObject):
     def __hash__(self):
         r'''Hashes burnish specifier.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''
@@ -298,43 +298,6 @@ class BurnishSpecifier(AbjadValueObject):
         return AbjadValueObject.__repr__(self)
 
     ### PRIVATE PROPERTIES ###
-
-    @property
-    def _attribute_manifest(self):
-        from abjad.tools import systemtools
-        from ide import idetools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='left_classes',
-                command='l',
-                editor=idetools.getters.get_integers,
-                ),
-            systemtools.AttributeDetail(
-                name='middle_classes',
-                command='m',
-                editor=idetools.getters.get_integers,
-                ),
-            systemtools.AttributeDetail(
-                name='right_classes',
-                command='r',
-                editor=idetools.getters.get_integers,
-                ),
-            systemtools.AttributeDetail(
-                name='left_counts',
-                command='ll',
-                editor=idetools.getters.get_integers,
-                ),
-            systemtools.AttributeDetail(
-                name='right_counts',
-                command='rl',
-                editor=idetools.getters.get_integers,
-                ),
-            systemtools.AttributeDetail(
-                name='outer_divisions_only',
-                command='oo',
-                editor=idetools.getters.get_boolean,
-                ),
-            )
 
     @property
     def _storage_format_specification(self):

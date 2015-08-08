@@ -11,7 +11,6 @@ from abjad.tools.rhythmmakertools.RhythmMaker import RhythmMaker
 from abjad.tools.topleveltools import detach
 from abjad.tools.topleveltools import iterate
 from abjad.tools.topleveltools import mutate
-from abjad.tools.topleveltools import new
 
 
 class TaleaRhythmMaker(RhythmMaker):
@@ -74,8 +73,6 @@ class TaleaRhythmMaker(RhythmMaker):
 
     ..  todo:: add talea examples.
 
-    ..  todo:: add rotate examples.
-
     Follows the two-step configure-once / call-repeatedly pattern shown here.
 
     Object model of a partially evaluated function that accepts a (possibly
@@ -90,11 +87,11 @@ class TaleaRhythmMaker(RhythmMaker):
     # voice 2 starts reading talea at second event of talea;
     # voice 3 starts reading talea at third event of talea;
     # voice 4 starts reading talea at fourth event of talea.
-    def helper(talea, seeds):
-        assert len(seeds) == 2
+    def helper(talea, rotation):
+        assert len(rotation) == 2
         if not talea:
             return talea
-        voice_index, measure_index = seeds
+        voice_index, measure_index = rotation
         talea = sequencetools.rotate_sequence(talea, -voice_index)
         return talea
 
@@ -103,11 +100,11 @@ class TaleaRhythmMaker(RhythmMaker):
     # voice 2 starts reading talea 1/4 of way through talea;
     # voice 3 starts reading talea 2/4 of way through talea;
     # voice 4 starts reading talea 3/4 of way through talea.
-    def quarter_rotation_helper(talea, seeds):
-        assert len(seeds) == 2
+    def quarter_rotation_helper(talea, rotation):
+        assert len(rotation) == 2
         if not talea:
             return talea
-        voice_index, measure_index = seeds
+        voice_index, measure_index = rotation
         index_of_rotation = -voice_index * (len(talea) // 4)
         index_of_rotation += -4 * measure_index
         talea = sequencetools.rotate_sequence(talea, index_of_rotation)
@@ -115,6 +112,8 @@ class TaleaRhythmMaker(RhythmMaker):
     '''
 
     ### CLASS VARIABLES ###
+
+    __documentation_section__ = 'Rhythm-makers'
 
     __slots__ = (
         '_burnish_specifier',
@@ -214,7 +213,7 @@ class TaleaRhythmMaker(RhythmMaker):
 
     ### SPECIAL METHODS ###
 
-    def __call__(self, divisions, seeds=None):
+    def __call__(self, divisions, rotation=None):
         r'''Calls talea rhythm-maker on `divisions`.
 
         ..  container:: example
@@ -245,7 +244,7 @@ class TaleaRhythmMaker(RhythmMaker):
         return RhythmMaker.__call__(
             self,
             divisions,
-            seeds=seeds,
+            rotation=rotation,
             )
 
     def __format__(self, format_specification=''):
@@ -388,64 +387,6 @@ class TaleaRhythmMaker(RhythmMaker):
     ### PRIVATE PROPERTIES ###
 
     @property
-    def _attribute_manifest(self):
-        from abjad.tools import rhythmmakertools
-        from abjad.tools import systemtools
-        from ide import idetools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='talea',
-                command='t',
-                editor=rhythmmakertools.Talea,
-                ),
-            systemtools.AttributeDetail(
-                name='split_divisions_by_counts',
-                command='sd',
-                editor=idetools.getters.get_integers,
-                ),
-            systemtools.AttributeDetail(
-                name='extra_counts_per_division',
-                command='ec',
-                editor=idetools.getters.get_integers,
-                ),
-            systemtools.AttributeDetail(
-                name='beam_specifier',
-                command='bs',
-                editor=rhythmmakertools.BeamSpecifier,
-                ),
-            systemtools.AttributeDetail(
-                name='burnish_specifier',
-                command='us',
-                editor=rhythmmakertools.BurnishSpecifier,
-                ),
-            systemtools.AttributeDetail(
-                name='duration_spelling_specifier',
-                command='ds',
-                editor=rhythmmakertools.DurationSpellingSpecifier,
-                ),
-            systemtools.AttributeDetail(
-                name='output_masks',
-                command='om',
-                editor=rhythmmakertools.BooleanPattern,
-                ),
-            systemtools.AttributeDetail(
-                name='tie_specifier',
-                command='ts',
-                editor=rhythmmakertools.TieSpecifier,
-                ),
-            systemtools.AttributeDetail(
-                name='tuplet_spelling_specifier',
-                command='tu',
-                editor=rhythmmakertools.TupletSpellingSpecifier,
-                ),
-            systemtools.AttributeDetail(
-                name='tie_split_notes',
-                command='tn',
-                editor=idetools.getters.get_boolean,
-                ),
-            )
-
-    @property
     def _storage_format_specification(self):
         from abjad.tools import systemtools
         manager = systemtools.StorageFormatManager
@@ -471,9 +412,7 @@ class TaleaRhythmMaker(RhythmMaker):
 
     def _apply_ties_to_split_notes(self, result, unscaled_talea):
         from abjad.tools import rhythmmakertools
-        tie_specifier = self.tie_specifier
-        if tie_specifier is None:
-            tie_specifier = rhythmmakertools.TieSpecifier()
+        tie_specifier = self._get_tie_specifier()
         if not self.tie_split_notes:
             return
         leaves = list(iterate(result).by_class(scoretools.Leaf))
@@ -502,7 +441,7 @@ class TaleaRhythmMaker(RhythmMaker):
             part = selectiontools.SliceSelection(part)
             tie_spanner = spannertools.Tie()
             # voodoo to temporarily neuter the contiguity constraint
-            tie_spanner._contiguity_constraint = None
+            tie_spanner._unconstrain_contiguity()
             for component in part:
                 # TODO: make top-level detach() work here
                 for spanner in component._get_spanners(prototype=prototype):
@@ -510,9 +449,9 @@ class TaleaRhythmMaker(RhythmMaker):
                 #detach(prototype, component)
             # TODO: remove usage of Spanner._extend()
             tie_spanner._extend(part)
+            tie_spanner._constrain_contiguity()
 
     def _burnish_division_part(self, division_part, token):
-        from abjad.tools import scoretools
         assert len(division_part) == len(token)
         new_division_part = []
         for number, i in zip(division_part, token):
@@ -631,6 +570,7 @@ class TaleaRhythmMaker(RhythmMaker):
             middle_part = self._burnish_division_part(middle_part, middle)
             burnished_division = left_part + middle_part
             burnished_divisions.append(burnished_division)
+
             # middle divisions
             for division in divisions[1:-1]:
                 middle_part = division
@@ -638,6 +578,7 @@ class TaleaRhythmMaker(RhythmMaker):
                 middle_part = self._burnish_division_part(middle_part, middle)
                 burnished_division = middle_part
                 burnished_divisions.append(burnished_division)
+
             # last division:
             available_right_length = len(divisions[-1])
             right_length = min([right_length, available_right_length])
@@ -655,17 +596,15 @@ class TaleaRhythmMaker(RhythmMaker):
             right_part = self._burnish_division_part(right_part, right)
             burnished_division = middle_part + right_part
             burnished_divisions.append(burnished_division)
+
         unburnished_weights = [mathtools.weight(x) for x in divisions]
         burnished_weights = [mathtools.weight(x) for x in burnished_divisions]
         assert burnished_weights == unburnished_weights
         return burnished_divisions
 
     def _make_leaf_lists(self, numeric_map, talea_denominator):
-        from abjad.tools import rhythmmakertools
         leaf_lists = []
-        specifier = self.duration_spelling_specifier
-        if specifier is None:
-            specifier = rhythmmakertools.DurationSpellingSpecifier()
+        specifier = self._get_duration_spelling_specifier()
         for map_division in numeric_map:
             leaf_list = scoretools.make_leaves_from_talea(
                 map_division,
@@ -674,11 +613,13 @@ class TaleaRhythmMaker(RhythmMaker):
                     specifier.decrease_durations_monotonically,
                 forbidden_written_duration=\
                     specifier.forbidden_written_duration,
+                spell_metrically=specifier.spell_metrically,
                 )
             leaf_lists.append(leaf_list)
         return leaf_lists
 
-    def _make_music(self, divisions, seeds):
+    def _make_music(self, divisions, rotation):
+        input_divisions = divisions[:]
         octuplet = self._prepare_input()
         talea = octuplet[0]
         extra_counts_per_division = octuplet[1]
@@ -696,7 +637,7 @@ class TaleaRhythmMaker(RhythmMaker):
         extra_counts_per_division = result[3]
         split_divisions_by_counts = result[4]
         secondary_divisions = self._make_secondary_divisions(
-            divisions, 
+            divisions,
             split_divisions_by_counts,
             )
         if talea:
@@ -727,12 +668,18 @@ class TaleaRhythmMaker(RhythmMaker):
                         rest = scoretools.Rest(note)
                         mutate(note).replace(rest)
                     detach(spannertools.Tie, logical_tie.head)
-        selections = self._apply_output_masks(selections)
+        selections = self._apply_output_masks(selections, rotation)
+        specifier = self._get_duration_spelling_specifier()
+        if specifier.rewrite_meter:
+            selections = specifier._rewrite_meter_(
+                selections, 
+                input_divisions,
+                )
         return selections
 
     def _make_numeric_map(self, divisions, talea, extra_counts_per_division):
         prolated_divisions = self._make_prolated_divisions(
-            divisions, 
+            divisions,
             extra_counts_per_division,
             )
         if not talea:
@@ -743,8 +690,8 @@ class TaleaRhythmMaker(RhythmMaker):
         else:
             prolated_numerators = [_.numerator for _ in prolated_divisions]
         map_divisions = self._split_sequence_extended_to_weights(
-            talea, 
-            prolated_numerators, 
+            talea,
+            prolated_numerators,
             overhang=False,
             )
         if self.burnish_specifier is not None:
@@ -774,7 +721,7 @@ class TaleaRhythmMaker(RhythmMaker):
         return prolated_divisions
 
     def _prepare_input(self):
-        seeds = self._seeds
+        rotation = self._rotation
         helper_functions = self.helper_functions or {}
         if self.talea is not None:
             talea = self.talea.counts or ()
@@ -782,14 +729,14 @@ class TaleaRhythmMaker(RhythmMaker):
             talea = ()
         talea_helper = self._none_to_trivial_helper(
             helper_functions.get('talea'))
-        talea = talea_helper(talea, seeds)
+        talea = talea_helper(talea, rotation)
         talea = datastructuretools.CyclicTuple(talea)
 
         extra_counts_per_division = self.extra_counts_per_division or ()
         prolation_addenda_helper = self._none_to_trivial_helper(
             helper_functions.get('extra_counts_per_division'))
         extra_counts_per_division = prolation_addenda_helper(
-            extra_counts_per_division, seeds)
+            extra_counts_per_division, rotation)
         extra_counts_per_division = datastructuretools.CyclicTuple(
             extra_counts_per_division)
 
@@ -810,39 +757,39 @@ class TaleaRhythmMaker(RhythmMaker):
         left_classes = left_classes or ()
         lefts_helper = self._none_to_trivial_helper(
             helper_functions.get('left_classes'))
-        left_classes = lefts_helper(left_classes, seeds)
+        left_classes = lefts_helper(left_classes, rotation)
         left_classes = datastructuretools.CyclicTuple(left_classes)
 
         if middle_classes == () or middle_classes is None:
             middle_classes = (0,)
         middles_helper = self._none_to_trivial_helper(
             helper_functions.get('middle_classes'))
-        middle_classes = middles_helper(middle_classes, seeds)
+        middle_classes = middles_helper(middle_classes, rotation)
         middle_classes = datastructuretools.CyclicTuple(middle_classes)
 
         right_classes = right_classes or ()
         rights_helper = self._none_to_trivial_helper(
             helper_functions.get('right_classes'))
-        right_classes = rights_helper(right_classes, seeds)
+        right_classes = rights_helper(right_classes, rotation)
         right_classes = datastructuretools.CyclicTuple(right_classes)
 
         left_counts = left_counts or (0,)
         left_lengths_helper = self._none_to_trivial_helper(
             helper_functions.get('left_counts'))
-        left_counts = left_lengths_helper(left_counts, seeds)
+        left_counts = left_lengths_helper(left_counts, rotation)
         left_counts = datastructuretools.CyclicTuple(left_counts)
 
         right_counts = right_counts or (0,)
         right_lengths_helper = self._none_to_trivial_helper(
             helper_functions.get('right_counts'))
-        right_counts = right_lengths_helper(right_counts, seeds)
+        right_counts = right_lengths_helper(right_counts, rotation)
         right_counts = datastructuretools.CyclicTuple(right_counts)
 
         split_divisions_by_counts = self.split_divisions_by_counts or ()
         secondary_divisions_helper = self._none_to_trivial_helper(
             helper_functions.get('split_divisions_by_counts'))
         split_divisions_by_counts = secondary_divisions_helper(
-            split_divisions_by_counts, seeds)
+            split_divisions_by_counts, rotation)
         split_divisions_by_counts = datastructuretools.CyclicTuple(
             split_divisions_by_counts)
 
@@ -1516,6 +1463,164 @@ class TaleaRhythmMaker(RhythmMaker):
             Forbidden durations are rewritten with smaller durations tied
             together.
 
+        ..  container:: example
+
+            **Example 5a.** This rhythm-maker spells all durations metrically:
+
+                >>> maker = rhythmmakertools.TaleaRhythmMaker(
+                ...     talea=rhythmmakertools.Talea(
+                ...         counts=[5, 4],
+                ...         denominator=16,
+                ...         ),
+                ...     duration_spelling_specifier=rhythmmakertools.DurationSpellingSpecifier(
+                ...         spell_metrically=True,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(3, 4), (3, 4), (3, 4)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 3/4
+                        c'8. ~ [
+                        c'8 ]
+                        c'4
+                        c'16 ~ [
+                        c'16 ~
+                        c'16 ~ ]
+                    }
+                    {
+                        c'8
+                        c'4
+                        c'8. ~ [
+                        c'8
+                        c'16 ~ ]
+                    }
+                    {
+                        c'16 ~ [
+                        c'16 ~
+                        c'16
+                        c'8. ~
+                        c'8 ]
+                        c'4
+                    }
+                }
+
+            **Example 5b.** This rhythm-maker spells unassignable durations
+            metrically:
+
+                >>> maker = rhythmmakertools.TaleaRhythmMaker(
+                ...     talea=rhythmmakertools.Talea(
+                ...         counts=[5, 4],
+                ...         denominator=16,
+                ...         ),
+                ...     duration_spelling_specifier=rhythmmakertools.DurationSpellingSpecifier(
+                ...         spell_metrically='unassignable',
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(3, 4), (3, 4), (3, 4)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 3/4
+                        c'8. ~ [
+                        c'8 ]
+                        c'4
+                        c'8. ~
+                    }
+                    {
+                        c'8
+                        c'4
+                        c'8. ~ [
+                        c'8
+                        c'16 ~ ]
+                    }
+                    {
+                        c'8. [
+                        c'8. ~
+                        c'8 ]
+                        c'4
+                    }
+                }
+
+        ..  container:: example
+
+            **Example 6.** Rewrites meter:
+
+                >>> maker = rhythmmakertools.TaleaRhythmMaker(
+                ...     talea=rhythmmakertools.Talea(
+                ...         counts=[5, 4],
+                ...         denominator=16,
+                ...         ),
+                ...     duration_spelling_specifier=rhythmmakertools.DurationSpellingSpecifier(
+                ...         rewrite_meter=True,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(3, 4), (3, 4), (3, 4)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 3/4
+                        c'4 ~
+                        c'16 [
+                        c'8. ~
+                        c'16
+                        c'8. ~ ]
+                    }
+                    {
+                        c'8 [
+                        c'8 ~
+                        c'8
+                        c'8 ~
+                        c'8.
+                        c'16 ~ ]
+                    }
+                    {
+                        c'8. [
+                        c'16 ~ ]
+                        c'4
+                        c'4
+                    }
+                }
+
         Set to duration spelling specifier or none.
         '''
         return RhythmMaker.duration_spelling_specifier.fget(self)
@@ -1787,7 +1892,7 @@ class TaleaRhythmMaker(RhythmMaker):
 
         ..  container:: example
 
-            **Example 2.** Masks every other output division:
+            **Example 2.** Silences every other output division:
 
             ::
 
@@ -1797,7 +1902,7 @@ class TaleaRhythmMaker(RhythmMaker):
                 ...         denominator=16,
                 ...         ),
                 ...     output_masks=[
-                ...         rhythmmakertools.BooleanPattern(
+                ...         rhythmmakertools.SilenceMask(
                 ...             indices=[1],
                 ...             period=2,
                 ...             ),
@@ -1842,7 +1947,62 @@ class TaleaRhythmMaker(RhythmMaker):
 
         ..  container:: example
 
-            **Example 3.** Masks every other secondary output division:
+            **Example 3.** Sustains every other output division:
+
+            ::
+
+                >>> maker = rhythmmakertools.TaleaRhythmMaker(
+                ...     talea=rhythmmakertools.Talea(
+                ...         counts=[1, 2, 3, 4],
+                ...         denominator=16,
+                ...         ),
+                ...     output_masks=[
+                ...         rhythmmakertools.SustainMask(
+                ...             indices=[1],
+                ...             period=2,
+                ...             ),
+                ...         ],
+                ...     )
+
+            ::
+
+                >>> divisions = [(3, 8), (4, 8), (3, 8), (4, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 3/8
+                        c'16 [
+                        c'8
+                        c'8. ]
+                    }
+                    {
+                        \time 4/8
+                        c'2
+                    }
+                    {
+                        \time 3/8
+                        c'8
+                        c'4
+                    }
+                    {
+                        \time 4/8
+                        c'2
+                    }
+                }
+
+        ..  container:: example
+
+            **Example 4.** Silences every other secondary output division:
 
             ::
 
@@ -1853,7 +2013,7 @@ class TaleaRhythmMaker(RhythmMaker):
                 ...         ),
                 ...     split_divisions_by_counts=[9],
                 ...     output_masks=[
-                ...         rhythmmakertools.BooleanPattern(
+                ...         rhythmmakertools.SilenceMask(
                 ...             indices=[1],
                 ...             period=2,
                 ...             ),
@@ -1902,6 +2062,70 @@ class TaleaRhythmMaker(RhythmMaker):
                     {
                         \time 4/8
                         r4..
+                        c'16
+                    }
+                }
+
+            **Example 5.** Sustains every other secondary output division:
+
+            ::
+
+                >>> maker = rhythmmakertools.TaleaRhythmMaker(
+                ...     talea=rhythmmakertools.Talea(
+                ...         counts=[1],
+                ...         denominator=16,
+                ...         ),
+                ...     split_divisions_by_counts=[9],
+                ...     output_masks=[
+                ...         rhythmmakertools.SustainMask(
+                ...             indices=[1],
+                ...             period=2,
+                ...             ),
+                ...         ],
+                ...     )
+
+            ::
+
+                >>> divisions = [(3, 8), (4, 8), (3, 8), (4, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 3/8
+                        c'16 [
+                        c'16
+                        c'16
+                        c'16
+                        c'16
+                        c'16 ]
+                    }
+                    {
+                        \time 4/8
+                        c'8.
+                        c'16 [
+                        c'16
+                        c'16
+                        c'16
+                        c'16 ]
+                    }
+                    {
+                        \time 3/8
+                        c'4
+                        c'16 [
+                        c'16 ]
+                    }
+                    {
+                        \time 4/8
+                        c'4..
                         c'16
                     }
                 }

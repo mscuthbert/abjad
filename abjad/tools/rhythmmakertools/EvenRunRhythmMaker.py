@@ -74,6 +74,8 @@ class EvenRunRhythmMaker(RhythmMaker):
 
     ### CLASS VARIABLES ###
 
+    __documentation_section__ = 'Rhythm-makers'
+
     __slots__ = (
         '_exponent',
         )
@@ -105,7 +107,7 @@ class EvenRunRhythmMaker(RhythmMaker):
 
     ### SPECIAL METHODS ###
 
-    def __call__(self, divisions, seeds=None):
+    def __call__(self, divisions, rotation=None):
         r'''Calls even-run rhythm-maker on `divisions`.
 
         ..  container:: example
@@ -124,10 +126,10 @@ class EvenRunRhythmMaker(RhythmMaker):
         Returns a list of selections. Each selection holds a single container
         filled with notes.
         '''
-        return RhythmMaker.__call__(
-            self,
+        superclass = super(EvenRunRhythmMaker, self)
+        return superclass.__call__(
             divisions,
-            seeds=seeds,
+            rotation=rotation,
             )
 
     def __format__(self, format_specification=''):
@@ -151,10 +153,7 @@ class EvenRunRhythmMaker(RhythmMaker):
 
     def _make_container(self, division):
         from abjad.tools import rhythmmakertools
-        duration_spelling_specifier = self.duration_spelling_specifier
-        if duration_spelling_specifier is None:
-            duration_spelling_specifier = \
-                rhythmmakertools.DurationSpellingSpecifier()
+        duration_spelling_specifier = self._get_duration_spelling_specifier()
         forbidden_written_duration = \
             duration_spelling_specifier.forbidden_written_duration
         time_signature = indicatortools.TimeSignature(division)
@@ -181,18 +180,17 @@ class EvenRunRhythmMaker(RhythmMaker):
             result = scoretools.Tuplet(multiplier, notes)
         return result
 
-    def _make_music(self, divisions, seeds):
+    def _make_music(self, divisions, rotation):
         from abjad.tools import rhythmmakertools
         selections = []
         for division in divisions:
-            assert isinstance(division, durationtools.Division), division
+            prototype = mathtools.NonreducedFraction
+            assert isinstance(division, prototype), division
         for division in divisions:
             container = self._make_container(division)
             selection = selectiontools.Selection(container)
             selections.append(selection)
-        beam_specifier = self.beam_specifier
-        if not beam_specifier:
-            beam_specifier = rhythmmakertools.BeamSpecifier()
+        beam_specifier = self._get_beam_specifier()
         if beam_specifier.beam_divisions_together:
             durations = []
             for selection in selections:
@@ -507,7 +505,7 @@ class EvenRunRhythmMaker(RhythmMaker):
 
         ..  container:: example
 
-            Do not tie across any divisions:
+            **Example 1.** Do not tie across any divisions:
 
             ::
 
@@ -571,7 +569,7 @@ class EvenRunRhythmMaker(RhythmMaker):
 
         ..  container:: example
 
-            Ties across all divisions:
+            **Example 2.** Ties across all divisions:
 
             ::
 
@@ -635,8 +633,8 @@ class EvenRunRhythmMaker(RhythmMaker):
 
         ..  container:: example
 
-            Ties across every other pair of divisions (starting with the 
-            first):
+            **Example 3.** Ties across every other pair of divisions (starting
+            with the first):
 
             ::
 
@@ -706,7 +704,7 @@ class EvenRunRhythmMaker(RhythmMaker):
     def tuplet_spelling_specifier(self):
         r'''Gets tuplet spelling specifier of even run rhythm-maker.
 
-        ..  note:: note yet implemented.
+        ..  note:: not yet implemented.
 
         Returns tuplet spelling specifier or none.
         '''

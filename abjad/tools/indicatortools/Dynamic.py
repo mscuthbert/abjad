@@ -1,8 +1,9 @@
 # -*- encoding: utf-8 -*-
-from abjad.tools.abctools.AbjadObject import AbjadObject
+from abjad.tools import mathtools
+from abjad.tools.abctools.AbjadValueObject import AbjadValueObject
 
 
-class Dynamic(AbjadObject):
+class Dynamic(AbjadValueObject):
     r'''A dynamic.
 
     ..  container:: example
@@ -52,6 +53,11 @@ class Dynamic(AbjadObject):
 
     ### CLASS VARIABLES ###
 
+    __slots__ = (
+        '_default_scope',
+        '_name',
+        )
+
     _format_slot = 'right'
 
     _composite_dynamic_name_to_steady_state_dynamic_name = {
@@ -71,6 +77,7 @@ class Dynamic(AbjadObject):
         'ppp': -4,
         'pp': -3,
         'p': -2,
+        'niente': mathtools.NegativeInfinity(),
         'mp': -1,
         'mf': 1,
         'f': 2,
@@ -101,6 +108,7 @@ class Dynamic(AbjadObject):
         'sfz',
         'sfp',
         'rfz',
+        'niente',
         )
 
     _dynamic_ordinal_to_dynamic_name = {
@@ -110,6 +118,7 @@ class Dynamic(AbjadObject):
         -3: 'pp',
         -2: 'p',
         -1: 'mp',
+        mathtools.NegativeInfinity(): 'niente',
         1: 'mf',
         2: 'f',
         3: 'ff',
@@ -129,31 +138,40 @@ class Dynamic(AbjadObject):
 
     ### SPECIAL METHODS ###
 
-    def __copy__(self, *args):
-        r'''Copies dynamic.
+    def __format__(self, format_specification=''):
+        r'''Formats dynamic.
 
-        Returns new dynamic.
+        Set `format_specification` to `''`, `'lilypond'` or `'storage'`.
+        Interprets `''` equal to `'storage'`.
+
+        ..  container:: example
+
+            **Example 1.** Gets storage format of forte:
+
+            ::
+
+                >>> dynamic = Dynamic('f')
+                >>> print(format(dynamic))
+                indicatortools.Dynamic(
+                    name='f',
+                    )
+
+        ..  container:: example
+
+            **Example 2.** Gets LilyPond format of forte:
+
+            ::
+
+                >>> dynamic = Dynamic('f')
+                >>> print(format(dynamic, 'lilypond'))
+                \f
+
+        Returns string.
         '''
-        return type(self)(self._name)
-
-    def __eq__(self, expr):
-        r'''Is true when `expr` is a dynamic with a name equal to that of this
-        dynamic. Otherwise false.
-
-        Returns boolean.
-        '''
-        if isinstance(expr, type(self)):
-            return self._name == expr._name
-        return False
-
-    def __hash__(self):
-        r'''Hashes dynamic.
-
-        Required to be explicitly re-defined on Python 3 if __eq__ changes.
-
-        Returns integer.
-        '''
-        return super(Dynamic, self).__hash__()
+        if format_specification == 'lilypond':
+            return self._lilypond_format
+        superclass = super(Dynamic, self)
+        return superclass.__format__(format_specification=format_specification)
 
     ### PRIVATE PROPERTIES ###
 
@@ -168,13 +186,56 @@ class Dynamic(AbjadObject):
     ### PUBLIC PROPERTIES ###
 
     @property
+    def default_scope(self):
+        r'''Gets default scope of dynamic.
+
+        ..  container:: example
+
+            **Example 1.** Forte:
+
+            ::
+
+                >>> dynamic = Dynamic('f')
+                >>> dynamic.default_scope
+                <class 'abjad.tools.scoretools.Staff.Staff'>
+
+        ..  container:: example
+
+            **Example 2.** Piano:
+
+            ::
+
+                >>> dynamic = Dynamic('p')
+                >>> dynamic.default_scope
+                <class 'abjad.tools.scoretools.Staff.Staff'>
+
+        Dynamics are staff-scoped by default.
+
+        Returns staff.
+        '''
+        return self._default_scope
+
+    @property
     def name(self):
-        r'''Name of dynamic.
+        r'''Gets name of dynamic.
 
-        ::
+        ..  container:: example
 
-            >>> dynamic.name
-            'f'
+            **Example 1.** Forte:
+
+            ::
+
+                >>> Dynamic('f').name
+                'f'
+
+        ..  container:: example
+
+            **Example 2.** Piano:
+
+            ::
+
+                >>> Dynamic('p').name
+                'p'
 
         Returns string.
         '''
@@ -182,12 +243,25 @@ class Dynamic(AbjadObject):
 
     @property
     def ordinal(self):
-        r'''Ordinal of dynamic.
+        r'''Gets ordinal value of dynamic.
 
-        ::
+        ..  container:: example
 
-            >>> dynamic.ordinal
-            2
+            **Example 1.** Forte:
+
+            ::
+
+                >>> Dynamic('f').ordinal
+                2
+
+        ..  container:: example
+
+            **Example 2.** Piano:
+
+            ::
+
+                >>> Dynamic('p').ordinal
+                -2
         
         Returns integer.
         '''
@@ -204,10 +278,23 @@ class Dynamic(AbjadObject):
     def composite_dynamic_name_to_steady_state_dynamic_name(name):
         r'''Changes composite `name` to steady state dynamic name.
 
-        ::
+        ..  container:: example
 
-            >>> Dynamic.composite_dynamic_name_to_steady_state_dynamic_name('sfp')
-            'p'
+            **Example 1.** Steady state of sfp is piano:
+
+            ::
+
+                >>> Dynamic.composite_dynamic_name_to_steady_state_dynamic_name('sfp')
+                'p'
+
+        ..  container:: example
+
+            **Example 2.** Steady state of rfz is forte:
+
+            ::
+
+                >>> Dynamic.composite_dynamic_name_to_steady_state_dynamic_name('rfz')
+                'f'
 
         Returns string.
         '''
@@ -217,12 +304,25 @@ class Dynamic(AbjadObject):
     def dynamic_name_to_dynamic_ordinal(name):
         r'''Changes `name` to dynamic ordinal.
 
-        ::
+        ..  container:: example
 
-            >>> Dynamic.dynamic_name_to_dynamic_ordinal('fff')
-            4
+            **Example 1.** Louder dynamics change to positive integers:
 
-        Returns integer.
+            ::
+
+                >>> Dynamic.dynamic_name_to_dynamic_ordinal('fff')
+                4
+
+        ..  container:: example
+
+            **Example 2.** Niente changes to negative infinity:
+
+            ::
+
+                >>> Dynamic.dynamic_name_to_dynamic_ordinal('niente')
+                NegativeInfinity
+
+        Returns integer or negative infinity.
         '''
         try:
             return Dynamic._dynamic_name_to_dynamic_ordinal[name]
@@ -235,23 +335,58 @@ class Dynamic(AbjadObject):
     def dynamic_ordinal_to_dynamic_name(dynamic_ordinal):
         r'''Changes `dynamic_ordinal` to dynamic name.
 
-        ::
+        ..  container:: example
 
-            >>> Dynamic.dynamic_ordinal_to_dynamic_name(-5)
-            'pppp'
+            **Example 1.** Negative values change to quiet dynamics:
+
+            ::
+
+                >>> Dynamic.dynamic_ordinal_to_dynamic_name(-5)
+                'pppp'
+
+        ..  container:: example
+
+            **Example 2.** Negative infinity changes to niente:
+
+            ::
+
+                >>> negative_infinity = mathtools.NegativeInfinity()
+                >>> Dynamic.dynamic_ordinal_to_dynamic_name(negative_infinity)
+                'niente'
 
         Returns string.
         '''
-        return Dynamic._dynamic_ordinal_to_dynamic_name[dynamic_ordinal]
+        if dynamic_ordinal == mathtools.NegativeInfinity():
+            return 'niente'
+        else:
+            return Dynamic._dynamic_ordinal_to_dynamic_name[dynamic_ordinal]
 
     @staticmethod
     def is_dynamic_name(arg):
         r'''Is true when `arg` is dynamic name. Otherwise false.
 
-        ::
+        ..  container:: example
 
-            >>> Dynamic.is_dynamic_name('f')
-            True
+            **Example 1.** Some usual dynamic names:
+
+            ::
+
+                >>> Dynamic.is_dynamic_name('f')
+                True
+
+            ::
+
+                >>> Dynamic.is_dynamic_name('sfz')
+                True
+
+        ..  container:: example
+
+            **Example 2.** Niente is also a dynamic name:
+
+            ::
+
+                >>> Dynamic.is_dynamic_name('niente')
+                True
 
         Returns boolean.
         '''

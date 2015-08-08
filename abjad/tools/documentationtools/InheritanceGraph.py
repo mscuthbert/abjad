@@ -91,6 +91,8 @@ class InheritanceGraph(AbjadObject):
 
     ### CLASS VARIABLES ###
 
+    __documentation_section__ = 'Documenters'
+
     __slots__ = (
         '_addresses',
         '_child_parents_mapping',
@@ -170,7 +172,7 @@ class InheritanceGraph(AbjadObject):
 
     ### SPECIAL METHODS ###
 
-    def __graph__(self):
+    def __graph__(self, **kwargs):
         r'''Graphviz graph of inheritance graph.
         '''
         from abjad.tools import documentationtools
@@ -180,6 +182,7 @@ class InheritanceGraph(AbjadObject):
         graph = documentationtools.GraphvizGraph(
             name='InheritanceGraph',
             attributes={
+                'bgcolor': 'transparent',
                 'color': 'lightslategrey',
                 'fontname': 'Arial',
                 'outputorder': 'edgesfirst',
@@ -188,6 +191,7 @@ class InheritanceGraph(AbjadObject):
                 #'ranksep': 0.5,
                 'splines': 'spline',
                 'style': ('dotted', 'rounded'),
+                'truecolor': True,
                 },
             edge_attributes={
                 'color': 'lightsteelblue2',
@@ -341,11 +345,17 @@ class InheritanceGraph(AbjadObject):
         visited_modules = set([])
         assert 0 < len(addresses)
         for x in addresses:
+            address = None
             if isinstance(x, (str, types.ModuleType)):
                 if isinstance(x, types.ModuleType):
                     module = x
                 else:
-                    module = importlib.import_module(x)
+                    try:
+                        module = importlib.import_module(x)
+                    except ImportError:
+                        module = None
+                if module is None:
+                    continue
                 for y in module.__dict__.values():
                     if isinstance(y, type):
                         all_classes.add(y)
@@ -367,7 +377,8 @@ class InheritanceGraph(AbjadObject):
                 all_classes.add(current_class)
                 immediate_classes.add(current_class)
                 address = (current_class.__module__, current_class.__name__)
-            cached_addresses.append(address)
+            if address is not None:
+                cached_addresses.append(address)
         return all_classes, immediate_classes, tuple(cached_addresses)
 
     def _find_lineage_distances(self):
@@ -399,27 +410,11 @@ class InheritanceGraph(AbjadObject):
         for part in parts[1:]:
             if part != name[-1]:
                 name.append(part)
-        if 2 < len(name) and name[1] == 'tools':
-        #if name[0] in ('abjad', 'experimental'):
+        if name[0] in ('abjad', 'experimental', 'ide'):
+            return name[2:]
+        elif 2 < len(name) and name[1] == 'tools':
             return name[2:]
         return name
-
-    @staticmethod
-    def _recurse_upward(
-        current_class,
-        invalid_classes,
-        child_parents_mapping,
-        ):
-        if current_class not in child_parents_mapping:
-            return
-        for parent in child_parents_mapping[current_class]:
-            if parent in invalid_classes:
-                invalid_classes.remove(parent)
-                InheritanceGraph._recurse_upward(
-                    parent,
-                    invalid_classes,
-                    child_parents_mapping,
-                    )
 
     @staticmethod
     def _recurse_downward(
@@ -436,6 +431,23 @@ class InheritanceGraph(AbjadObject):
                     child,
                     invalid_classes,
                     parent_children_mapping,
+                    )
+
+    @staticmethod
+    def _recurse_upward(
+        current_class,
+        invalid_classes,
+        child_parents_mapping,
+        ):
+        if current_class not in child_parents_mapping:
+            return
+        for parent in child_parents_mapping[current_class]:
+            if parent in invalid_classes:
+                invalid_classes.remove(parent)
+                InheritanceGraph._recurse_upward(
+                    parent,
+                    invalid_classes,
+                    child_parents_mapping,
                     )
 
     def _strip_nonlineage_classes(self,

@@ -68,6 +68,8 @@ class IncisedRhythmMaker(RhythmMaker):
 
     ### CLASS VARIABLES ###
 
+    __documentation_section__ = 'Rhythm-makers'
+
     __slots__ = (
         '_extra_counts_per_division',
         '_helper_functions',
@@ -75,7 +77,7 @@ class IncisedRhythmMaker(RhythmMaker):
         '_split_divisions_by_counts',
         )
 
-    _class_name_abbreviatio = 'In'
+    _class_name_abbreviation = 'In'
 
     _human_readable_class_name = 'incised rhythm-maker'
 
@@ -126,7 +128,7 @@ class IncisedRhythmMaker(RhythmMaker):
 
     ### SPECIAL METHODS ###
 
-    def __call__(self, divisions, seeds=None):
+    def __call__(self, divisions, rotation=None):
         r'''Calls incised rhythm-maker on `divisions`.
 
         Returns list of selections.
@@ -134,10 +136,16 @@ class IncisedRhythmMaker(RhythmMaker):
         return RhythmMaker.__call__(
             self,
             divisions,
-            seeds=seeds,
+            rotation=rotation,
             )
 
     ### PRIVATE METHODS ###
+
+    def _get_incise_specifier(self):
+        from abjad.tools import rhythmmakertools
+        if self.incise_specifier is not None:
+            return self.incise_specifier
+        return rhythmmakertools.InciseSpecifier()
 
     def _make_division_incised_numeric_map(
         self,
@@ -171,10 +179,7 @@ class IncisedRhythmMaker(RhythmMaker):
         return numeric_map
 
     def _make_middle_of_numeric_map_part(self, middle):
-        from abjad.tools import rhythmmakertools
-        incise_specifier = self.incise_specifier
-        if incise_specifier is None:
-            incise_specifier = rhythmmakertools.InciseSpecifier()
+        incise_specifier = self._get_incise_specifier()
         if incise_specifier.fill_with_notes:
             if not incise_specifier.outer_divisions_only:
                 if 0 < middle:
@@ -209,9 +214,10 @@ class IncisedRhythmMaker(RhythmMaker):
                 message = 'must incise divisions or output.'
                 raise Exception(message)
 
-    def _make_music(self, divisions, seeds):
+    def _make_music(self, divisions, rotation):
         from abjad.tools import rhythmmakertools
-        input_ = self._prepare_input(seeds)
+        input_divisions = divisions[:]
+        input_ = self._prepare_input(rotation)
         prefix_talea = input_[0]
         prefix_counts = input_[1]
         suffix_talea = input_[2]
@@ -241,9 +247,7 @@ class IncisedRhythmMaker(RhythmMaker):
         split_divisions_by_counts = input_[5]
         secondary_divisions = self._make_secondary_divisions(
             divisions, split_divisions_by_counts)
-        incise_specifier = self.incise_specifier
-        if incise_specifier is None:
-            incise_specifier = rhythmmakertools.InciseSpecifier()
+        incise_specifier = self._get_incise_specifier()
         if not incise_specifier.outer_divisions_only:
             numeric_map = self._make_division_incised_numeric_map(
                 secondary_divisions,
@@ -276,9 +280,7 @@ class IncisedRhythmMaker(RhythmMaker):
                 )
             result.extend(tuplets)
         assert self._all_are_tuplets_or_all_are_leaf_selections(result)
-        beam_specifier = self.beam_specifier
-        if beam_specifier is None:
-            beam_specifier = rhythmmakertools.BeamSpecifier()
+        beam_specifier = self._get_beam_specifier()
         if beam_specifier.beam_divisions_together:
             beam = spannertools.MultipartBeam()
             attach(beam, result)
@@ -287,7 +289,13 @@ class IncisedRhythmMaker(RhythmMaker):
                 beam = spannertools.MultipartBeam()
                 attach(beam, x)
         selections = [selectiontools.Selection(x) for x in result]
-        selections = self._apply_output_masks(selections)
+        selections = self._apply_output_masks(selections, rotation)
+        duration_specifier = self._get_duration_spelling_specifier()
+        if duration_specifier.rewrite_meter:
+            selections = duration_specifier._rewrite_meter_(
+                selections,
+                input_divisions,
+                )
         return selections
 
     def _make_numeric_map_part(
@@ -382,9 +390,8 @@ class IncisedRhythmMaker(RhythmMaker):
         self, numeric_map, lcd):
         from abjad.tools import rhythmmakertools
         selections = []
-        specifier = self.duration_spelling_specifier
-        if specifier is None:
-            specifier = rhythmmakertools.DurationSpellingSpecifier()
+        specifier = self._get_duration_spelling_specifier()
+        tie_specifier = self._get_tie_specifier()
         for numeric_map_part in numeric_map:
             numeric_map_part = [
                 _ for _ in numeric_map_part if _ != durationtools.Duration(0)
@@ -396,44 +403,44 @@ class IncisedRhythmMaker(RhythmMaker):
                     specifier.forbidden_written_duration,
                 decrease_durations_monotonically=\
                     specifier.decrease_durations_monotonically,
+                spell_metrically=specifier.spell_metrically,
+                use_messiaen_style_ties=tie_specifier.use_messiaen_style_ties,
                 )
             selections.append(selection)
         return selections
 
-    def _prepare_input(self, seeds):
+    def _prepare_input(self, rotation):
         from abjad.tools import rhythmmakertools
         helper_functions = self.helper_functions or {}
-        incise_specifier = self.incise_specifier
-        if incise_specifier is None:
-            incise_specifier = rhythmmakertools.InciseSpecifier()
+        incise_specifier = self._get_incise_specifier()
         prefix_talea = incise_specifier.prefix_talea or ()
         helper = helper_functions.get('prefix_talea')
         helper = self._none_to_trivial_helper(helper)
-        prefix_talea = helper(prefix_talea, seeds)
+        prefix_talea = helper(prefix_talea, rotation)
         prefix_talea = datastructuretools.CyclicTuple(prefix_talea)
 
         prefix_counts = incise_specifier.prefix_counts or (0,)
         helper = helper_functions.get('prefix_counts')
         helper = self._none_to_trivial_helper(helper)
-        prefix_counts = helper(prefix_counts, seeds)
+        prefix_counts = helper(prefix_counts, rotation)
         prefix_counts = datastructuretools.CyclicTuple(prefix_counts)
 
         suffix_talea = incise_specifier.suffix_talea or ()
         helper = helper_functions.get('suffix_talea')
         helper = self._none_to_trivial_helper(helper)
-        suffix_talea = helper(suffix_talea, seeds)
+        suffix_talea = helper(suffix_talea, rotation)
         suffix_talea = datastructuretools.CyclicTuple(suffix_talea)
 
         suffix_counts = incise_specifier.suffix_counts or (0,)
         helper = helper_functions.get('suffix_counts')
         helper = self._none_to_trivial_helper(helper)
-        suffix_counts = helper(suffix_counts, seeds)
+        suffix_counts = helper(suffix_counts, rotation)
         suffix_counts = datastructuretools.CyclicTuple(suffix_counts)
 
         extra_counts_per_division = self.extra_counts_per_division or ()
         helper = helper_functions.get('extra_counts_per_division')
         helper = self._none_to_trivial_helper(helper)
-        extra_counts_per_division = helper(extra_counts_per_division, seeds)
+        extra_counts_per_division = helper(extra_counts_per_division, rotation)
         if extra_counts_per_division:
             extra_counts_per_division = datastructuretools.CyclicTuple(
                 extra_counts_per_division)
@@ -443,7 +450,7 @@ class IncisedRhythmMaker(RhythmMaker):
         split_divisions_by_counts = self.split_divisions_by_counts or ()
         helper = helper_functions.get('split_divisions_by_counts')
         helper = self._none_to_trivial_helper(helper)
-        split_divisions_by_counts = helper(split_divisions_by_counts, seeds)
+        split_divisions_by_counts = helper(split_divisions_by_counts, rotation)
         split_divisions_by_counts = datastructuretools.CyclicTuple(
             split_divisions_by_counts)
 
@@ -456,52 +463,278 @@ class IncisedRhythmMaker(RhythmMaker):
             split_divisions_by_counts,
             )
 
-    ### PRIVATE PROPERTIES ###
+    ### PUBLIC PROPERTIES ###
 
     @property
-    def _attribute_manifest(self):
-        from abjad.tools import rhythmmakertools
-        from abjad.tools import systemtools
-        from ide import idetools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='incise_specifier',
-                command='is',
-                editor=rhythmmakertools.InciseSpecifier,
-                ),
-            systemtools.AttributeDetail(
-                name='split_divisions_by_counts',
-                command='sd',
-                editor=idetools.getters.get_integers,
-                ),
-            systemtools.AttributeDetail(
-                name='extra_counts_per_division',
-                command='ec',
-                editor=idetools.getters.get_integers,
-                ),
-            systemtools.AttributeDetail(
-                name='beam_specifier',
-                command='bs',
-                editor=rhythmmakertools.BeamSpecifier,
-                ),
-            systemtools.AttributeDetail(
-                name='duration_spelling_specifier',
-                command='ds',
-                editor=rhythmmakertools.DurationSpellingSpecifier,
-                ),
-            systemtools.AttributeDetail(
-                name='tie_specifier',
-                command='ts',
-                editor=rhythmmakertools.TieSpecifier,
-                ),
-            systemtools.AttributeDetail(
-                name='tuplet_spelling_specifier',
-                command='tu',
-                editor=rhythmmakertools.TupletSpellingSpecifier,
-                ),
-            )
+    def duration_spelling_specifier(self):
+        r'''Gets duration spelling specifier of incised rhythm-maker.
 
-    ### PUBLIC PROPERTIES ###
+        ..  container:: example
+
+            **Example 1.** Spells durations with the fewest number of glyphs:
+
+            ::
+
+                >>> maker = rhythmmakertools.IncisedRhythmMaker(
+                ...     incise_specifier=rhythmmakertools.InciseSpecifier(
+                ...         prefix_talea=[-1],
+                ...         prefix_counts=[1],
+                ...         outer_divisions_only=True,
+                ...         suffix_talea=[-1],
+                ...         suffix_counts=[1],
+                ...         talea_denominator=8,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(8, 8), (4, 8), (6, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 8/8
+                        r8
+                        c'2..
+                    }
+                    {
+                        \time 4/8
+                        c'2
+                    }
+                    {
+                        \time 6/8
+                        c'2 ~
+                        c'8
+                        r8
+                    }
+                }
+
+        ..  container:: example
+
+            **Example 2.** Forbids notes with written duration greater than or
+            equal to ``1/2``:
+
+            ::
+
+                >>> maker = rhythmmakertools.IncisedRhythmMaker(
+                ...     incise_specifier=rhythmmakertools.InciseSpecifier(
+                ...         prefix_talea=[-1],
+                ...         prefix_counts=[1],
+                ...         outer_divisions_only=True,
+                ...         suffix_talea=[-1],
+                ...         suffix_counts=[1],
+                ...         talea_denominator=8,
+                ...         ),
+                ...     duration_spelling_specifier=rhythmmakertools.DurationSpellingSpecifier(
+                ...         forbidden_written_duration=Duration(1, 2),
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(8, 8), (4, 8), (6, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 8/8
+                        r8
+                        c'4 ~
+                        c'4 ~
+                        c'4.
+                    }
+                    {
+                        \time 4/8
+                        c'4 ~
+                        c'4
+                    }
+                    {
+                        \time 6/8
+                        c'4 ~
+                        c'4 ~
+                        c'8
+                        r8
+                    }
+                }
+
+        ..  container:: example
+
+            **Example 3a.** Spells all divisions metrically when
+            `spell_metrically` is true:
+
+            ::
+
+                >>> maker = rhythmmakertools.IncisedRhythmMaker(
+                ...     incise_specifier=rhythmmakertools.InciseSpecifier(
+                ...         prefix_talea=[-1],
+                ...         prefix_counts=[1],
+                ...         outer_divisions_only=True,
+                ...         suffix_talea=[-1],
+                ...         suffix_counts=[1],
+                ...         talea_denominator=8,
+                ...         ),
+                ...     duration_spelling_specifier=rhythmmakertools.DurationSpellingSpecifier(
+                ...         spell_metrically=True,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(8, 8), (4, 8), (6, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 8/8
+                        r8
+                        c'4. ~
+                        c'4 ~
+                        c'4
+                    }
+                    {
+                        \time 4/8
+                        c'2
+                    }
+                    {
+                        \time 6/8
+                        c'4. ~
+                        c'4
+                        r8
+                    }
+                }
+
+            **Example 3b.** Spells only unassignable durations metrically when
+            `spell_metrically` is ``'unassignable'``:
+
+            ::
+
+                >>> maker = rhythmmakertools.IncisedRhythmMaker(
+                ...     incise_specifier=rhythmmakertools.InciseSpecifier(
+                ...         prefix_talea=[-1],
+                ...         prefix_counts=[1],
+                ...         outer_divisions_only=True,
+                ...         suffix_talea=[-1],
+                ...         suffix_counts=[1],
+                ...         talea_denominator=8,
+                ...         ),
+                ...     duration_spelling_specifier=rhythmmakertools.DurationSpellingSpecifier(
+                ...         spell_metrically='unassignable',
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(8, 8), (4, 8), (6, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 8/8
+                        r8
+                        c'2..
+                    }
+                    {
+                        \time 4/8
+                        c'2
+                    }
+                    {
+                        \time 6/8
+                        c'4. ~
+                        c'4
+                        r8
+                    }
+                }
+
+            **Example 3c.** Rewrites meter:
+
+            ::
+
+                >>> maker = rhythmmakertools.IncisedRhythmMaker(
+                ...     incise_specifier=rhythmmakertools.InciseSpecifier(
+                ...         prefix_talea=[-1],
+                ...         prefix_counts=[1],
+                ...         outer_divisions_only=True,
+                ...         suffix_talea=[-1],
+                ...         suffix_counts=[1],
+                ...         talea_denominator=8,
+                ...         ),
+                ...     duration_spelling_specifier=rhythmmakertools.DurationSpellingSpecifier(
+                ...         rewrite_meter=True,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(8, 8), (4, 8), (6, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 8/8
+                        r8
+                        c'2..
+                    }
+                    {
+                        \time 4/8
+                        c'2
+                    }
+                    {
+                        \time 6/8
+                        c'4. ~
+                        c'4
+                        r8
+                    }
+                }
+
+        Returns duration spelling specifier or none.
+        '''
+        superclass = super(IncisedRhythmMaker, self)
+        return superclass.duration_spelling_specifier
 
     @property
     def extra_counts_per_division(self):
@@ -800,6 +1033,341 @@ class IncisedRhythmMaker(RhythmMaker):
         Returns tuple or none.
         '''
         return self._split_divisions_by_counts
+
+    @property
+    def tie_specifier(self):
+        r'''Gets tie specifier of incised rhythm-maker.
+
+        ..  container:: example
+
+            **Example 1.** Does not tie across divisions:
+
+            ::
+
+                >>> maker = rhythmmakertools.IncisedRhythmMaker(
+                ...     incise_specifier=rhythmmakertools.InciseSpecifier(
+                ...         prefix_talea=[-1],
+                ...         prefix_counts=[1],
+                ...         outer_divisions_only=True,
+                ...         suffix_talea=[-1],
+                ...         suffix_counts=[1],
+                ...         talea_denominator=8,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(8, 8), (4, 8), (6, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 8/8
+                        r8
+                        c'2..
+                    }
+                    {
+                        \time 4/8
+                        c'2
+                    }
+                    {
+                        \time 6/8
+                        c'2 ~
+                        c'8
+                        r8
+                    }
+                }
+
+            This is default behavior.
+
+        ..  container:: example
+
+            **Example 2.** Ties across divisions:
+
+            ::
+
+                >>> maker = rhythmmakertools.IncisedRhythmMaker(
+                ...     incise_specifier=rhythmmakertools.InciseSpecifier(
+                ...         prefix_talea=[-1],
+                ...         prefix_counts=[1],
+                ...         outer_divisions_only=True,
+                ...         suffix_talea=[-1],
+                ...         suffix_counts=[1],
+                ...         talea_denominator=8,
+                ...         ),
+                ...     tie_specifier=rhythmmakertools.TieSpecifier(
+                ...         tie_across_divisions=True,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(8, 8), (4, 8), (6, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 8/8
+                        r8
+                        c'2.. ~
+                    }
+                    {
+                        \time 4/8
+                        c'2 ~
+                    }
+                    {
+                        \time 6/8
+                        c'2 ~
+                        c'8
+                        r8
+                    }
+                }
+
+        ..  container:: example
+
+            **Example 3.** Patterns ties across divisions:
+
+            ::
+
+                >>> pattern = rhythmmakertools.BooleanPattern(
+                ...     indices=[0],
+                ...     period=2,
+                ...     )
+                >>> maker = rhythmmakertools.IncisedRhythmMaker(
+                ...     incise_specifier=rhythmmakertools.InciseSpecifier(
+                ...         prefix_talea=[-1],
+                ...         prefix_counts=[1],
+                ...         outer_divisions_only=True,
+                ...         suffix_talea=[-1],
+                ...         suffix_counts=[1],
+                ...         talea_denominator=8,
+                ...         ),
+                ...     tie_specifier=rhythmmakertools.TieSpecifier(
+                ...         tie_across_divisions=pattern,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(8, 8), (4, 8), (6, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 8/8
+                        r8
+                        c'2.. ~
+                    }
+                    {
+                        \time 4/8
+                        c'2
+                    }
+                    {
+                        \time 6/8
+                        c'2 ~
+                        c'8
+                        r8
+                    }
+                }
+
+        ..  container:: example
+
+            **Example 4.** Uses Messiaen-style ties:
+
+            ::
+
+                >>> maker = rhythmmakertools.IncisedRhythmMaker(
+                ...     incise_specifier=rhythmmakertools.InciseSpecifier(
+                ...         prefix_talea=[-1],
+                ...         prefix_counts=[1],
+                ...         outer_divisions_only=True,
+                ...         suffix_talea=[-1],
+                ...         suffix_counts=[1],
+                ...         talea_denominator=8,
+                ...         ),
+                ...     tie_specifier=rhythmmakertools.TieSpecifier(
+                ...         tie_across_divisions=True,
+                ...         use_messiaen_style_ties=True,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(8, 8), (4, 8), (6, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 8/8
+                        r8
+                        c'2..
+                    }
+                    {
+                        \time 4/8
+                        c'2 \repeatTie
+                    }
+                    {
+                        \time 6/8
+                        c'2 \repeatTie
+                        c'8 \repeatTie
+                        r8
+                    }
+                }
+
+        ..  container:: example
+
+            **Example 5.** Strips all ties:
+
+            ::
+
+                >>> maker = rhythmmakertools.IncisedRhythmMaker(
+                ...     incise_specifier=rhythmmakertools.InciseSpecifier(
+                ...         prefix_talea=[-1],
+                ...         prefix_counts=[1],
+                ...         outer_divisions_only=True,
+                ...         suffix_talea=[-1],
+                ...         suffix_counts=[1],
+                ...         talea_denominator=8,
+                ...         ),
+                ...     tie_specifier=rhythmmakertools.TieSpecifier(
+                ...         strip_ties=True,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(8, 8), (4, 8), (6, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 8/8
+                        r8
+                        c'2..
+                    }
+                    {
+                        \time 4/8
+                        c'2
+                    }
+                    {
+                        \time 6/8
+                        c'2
+                        c'8
+                        r8
+                    }
+                }
+
+        ..  container:: example
+
+            **Example 6.** Spells durations metrically and then strips all
+            ties:
+
+            ::
+
+                >>> maker = rhythmmakertools.IncisedRhythmMaker(
+                ...     duration_spelling_specifier=rhythmmakertools.DurationSpellingSpecifier(
+                ...         spell_metrically=True,
+                ...         ),
+                ...     incise_specifier=rhythmmakertools.InciseSpecifier(
+                ...         prefix_talea=[-1],
+                ...         prefix_counts=[1],
+                ...         outer_divisions_only=True,
+                ...         suffix_talea=[-1],
+                ...         suffix_counts=[1],
+                ...         talea_denominator=8,
+                ...         ),
+                ...     tie_specifier=rhythmmakertools.TieSpecifier(
+                ...         strip_ties=True,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(8, 8), (4, 8), (6, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 8/8
+                        r8
+                        c'4.
+                        c'4
+                        c'4
+                    }
+                    {
+                        \time 4/8
+                        c'2
+                    }
+                    {
+                        \time 6/8
+                        c'4.
+                        c'4
+                        r8
+                    }
+                }
+
+        Defaults to none.
+
+        Set to tie specifier or none.
+
+        Returns tie specifier or none.
+        '''
+        superclass = super(IncisedRhythmMaker, self)
+        return superclass.tie_specifier
 
     @property
     def tuplet_spelling_specifier(self):

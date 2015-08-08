@@ -19,6 +19,8 @@ class NoteHead(AbjadObject):
 
     ### CLASS VARIABLES ###
 
+    __documentation_section__ = 'Note heads'
+
     __slots__ = (
         '_client',
         '_is_cautionary',
@@ -114,7 +116,7 @@ class NoteHead(AbjadObject):
     def __hash__(self):
         r'''Hashes note-head.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''
@@ -308,6 +310,35 @@ class NoteHead(AbjadObject):
         self._is_forced = arg
 
     @property
+    def is_parenthesized(self):
+        r'''Gets and sets forced accidental flag.
+
+        Gets forced accidental flag:
+
+        ::
+
+            >>> note_head = scoretools.NoteHead("cs''")
+            >>> note_head.is_parenthesized is None
+            True
+
+        Sets forced accidental flag:
+
+        ::
+
+            >>> note_head = scoretools.NoteHead("cs''")
+            >>> note_head.is_parenthesized = True
+
+        Returns boolean.
+        '''
+        return self._is_parenthesized
+
+    @is_parenthesized.setter
+    def is_parenthesized(self, arg):
+        if arg is not None:
+            arg = bool(arg)
+        self._is_parenthesized = arg
+
+    @property
     def named_pitch(self):
         r'''Named pitch of note-head.
 
@@ -337,35 +368,6 @@ class NoteHead(AbjadObject):
         if self._tweak is None:
             self._tweak = lilypondnametools.LilyPondNameManager()
         return self._tweak
-
-    @property
-    def is_parenthesized(self):
-        r'''Gets and sets forced accidental flag.
-
-        Gets forced accidental flag:
-
-        ::
-
-            >>> note_head = scoretools.NoteHead("cs''")
-            >>> note_head.is_parenthesized is None
-            True
-
-        Sets forced accidental flag:
-
-        ::
-
-            >>> note_head = scoretools.NoteHead("cs''")
-            >>> note_head.is_parenthesized = True
-
-        Returns boolean.
-        '''
-        return self._is_parenthesized
-
-    @is_parenthesized.setter
-    def is_parenthesized(self, arg):
-        if arg is not None:
-            arg = bool(arg)
-        self._is_parenthesized = arg
 
     @property
     def written_pitch(self):

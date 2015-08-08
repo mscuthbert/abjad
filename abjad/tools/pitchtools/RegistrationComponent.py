@@ -73,32 +73,13 @@ class RegistrationComponent(AbjadObject):
     def __hash__(self):
         r'''Hashes registration component.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''
         return super(RegistrationComponent, self).__hash__()
 
     ### PRIVATE PROPERTIES ###
-
-    @property
-    def _attribute_manifest(self):
-        from abjad.tools import systemtools
-        from ide import idetools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='source_pitch_range',
-                command='pr',
-                editor=idetools.getters.get_pitch_range_string,
-                is_keyword=False,
-                ),
-            systemtools.AttributeDetail(
-                name='target_octave_start_pitch',
-                command='sp',
-                editor=idetools.getters.get_integer,
-                is_keyword=False,
-                ),
-            )
 
     @property
     def _input_argument_token(self):

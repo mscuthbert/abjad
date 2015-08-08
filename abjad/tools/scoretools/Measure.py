@@ -6,6 +6,7 @@ from abjad.tools import mathtools
 from abjad.tools.topleveltools import attach
 from abjad.tools.topleveltools import detach
 from abjad.tools.topleveltools import iterate
+from abjad.tools.topleveltools import mutate
 from abjad.tools.topleveltools import override
 from abjad.tools.topleveltools import set_
 from abjad.tools.scoretools.FixedDurationContainer \
@@ -34,6 +35,8 @@ class Measure(FixedDurationContainer):
     '''
 
     ### CLASS VARIABLES ###
+
+    __documentation_section__ = 'Containers'
 
     __slots__ = (
         '_always_format_time_signature',
@@ -191,6 +194,15 @@ class Measure(FixedDurationContainer):
     ### PRIVATE PROPERTIES ###
 
     @property
+    def _compact_representation(self):
+        if not self:
+            return '| {!s} |'.format(self.time_signature)
+        return '| {!s} {} |'.format(
+            self.time_signature,
+            self._contents_summary,
+            )
+
+    @property
     def _lilypond_format(self):
         self._check_duration()
         return self._format_component()
@@ -244,6 +256,31 @@ class Measure(FixedDurationContainer):
                 if not candidate_duration.is_assignable:
                     return False
         return True
+
+    def _as_graphviz_node(self):
+        from abjad.tools import documentationtools
+        from abjad.tools import scoretools
+        node = scoretools.Component._as_graphviz_node(self)
+        fraction = mathtools.NonreducedFraction(
+            self.time_signature.numerator,
+            self.time_signature.denominator,
+            )
+        node[0].extend([
+            documentationtools.GraphvizTableRow([
+                documentationtools.GraphvizTableCell(
+                    label=type(self).__name__,
+                    attributes={'border': 0},
+                    ),
+                ]),
+            documentationtools.GraphvizTableHorizontalRule(),
+            documentationtools.GraphvizTableRow([
+                documentationtools.GraphvizTableCell(
+                    label=str(fraction),
+                    attributes={'border': 0},
+                    ),
+                ]),
+            ])
+        return node
 
     def _check_duration(self):
         effective_time_signature = self.time_signature
@@ -845,8 +882,10 @@ class Measure(FixedDurationContainer):
                 self._scale_contents(remaining_multiplier)
         elif self._all_contents_are_scalable_by_multiplier(multiplier):
             self._scale_contents(multiplier)
-            if (old_time_signature.has_non_power_of_two_denominator or
-                not mathtools.is_nonnegative_integer_power_of_two(multiplier)):
+            if (
+                old_time_signature.has_non_power_of_two_denominator or
+                not mathtools.is_nonnegative_integer_power_of_two(multiplier)
+                ):
                 new_pair = mathtools.NonreducedFraction(old_pair)
                 new_pair = new_pair.multiply_with_cross_cancelation(multiplier)
                 new_pair = new_pair.pair
@@ -880,3 +919,22 @@ class Measure(FixedDurationContainer):
                 multiplier / new_time_signature.implied_prolation
             if remaining_multiplier != durationtools.Multiplier(1):
                 self._scale_contents(remaining_multiplier)
+
+    @classmethod
+    def from_selections(cls, selections, time_signatures=None):
+        r'''Makes a selection of measures from `selections`.
+
+        Returns selections.
+        '''
+        from abjad.tools import scoretools
+        assert len(selections)
+        if not time_signatures:
+            time_signatures = [_.get_duration() for _ in selections]
+        assert len(selections) == len(time_signatures)
+        assert [_.get_duration() for _ in selections] == \
+            [durationtools.Duration(_) for _ in time_signatures]
+        measures = scoretools.make_spacer_skip_measures(time_signatures)
+        temporary_voice = scoretools.Voice(measures)
+        mutate(temporary_voice).replace_measure_contents(selections)
+        temporary_voice[:] = []
+        return measures

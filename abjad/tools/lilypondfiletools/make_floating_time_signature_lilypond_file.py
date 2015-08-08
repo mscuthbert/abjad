@@ -167,7 +167,7 @@ def make_floating_time_signature_lilypond_file(music=None):
     vector = layouttools.make_spacing_vector(0, 0, 12, 0)
     lilypond_file.paper_block.system_system_spacing = vector
 
-    lilypond_file.layout_block.indent = 0
+    #lilypond_file.layout_block.indent = 0
     lilypond_file.layout_block.ragged_right = True
     command = indicatortools.LilyPondCommand('accidentalStyle forget')
     lilypond_file.layout_block.items.append(command)
@@ -193,7 +193,7 @@ def make_floating_time_signature_lilypond_file(music=None):
     scheme = schemetools.Scheme('tuplet-number::calc-fraction-text')
     override(context_block).tuplet_number.text = scheme
     set_(context_block).autoBeaming = False
-    moment = schemetools.SchemeMoment((1, 32))
+    moment = schemetools.SchemeMoment((1, 24))
     set_(context_block).proportionalNotationDuration = moment
     set_(context_block).tupletFullLength = True
 

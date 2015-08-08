@@ -1,11 +1,13 @@
 # -*- encoding: utf-8 -*-
-from abjad.tools.abctools.AbjadObject import AbjadObject
+from abjad.tools.abctools.AbjadValueObject import AbjadValueObject
 
 
-class BendAfter(AbjadObject):
+class BendAfter(AbjadValueObject):
     r'''A fall or doit.
 
     ..  container:: example
+
+        **Example 1.** A fall:
 
         ::
 
@@ -19,14 +21,30 @@ class BendAfter(AbjadObject):
             >>> print(format(note))
             c'4 - \bendAfter #'-4.0
 
+    ..  container:: example
+
+        **Example 2.** A doit:
+
+        ::
+
+            >>> note = Note("c'4")
+            >>> bend = indicatortools.BendAfter(2)
+            >>> attach(bend, note)
+            >>> show(note) # doctest: +SKIP
+
+        ..  doctest::
+
+            >>> print(format(note))
+            c'4 - \bendAfter #'2.0
+
     '''
 
     ### CLASS VARIABLES ###
 
     __slots__ = (
         '_bend_amount',
+        '_default_scope',
         )
-
 
     _format_slot = 'right'
 
@@ -37,93 +55,9 @@ class BendAfter(AbjadObject):
             bend_amount = bend_amount.bend_amount
         bend_amount = float(bend_amount)
         self._bend_amount = bend_amount
+        self._default_scope = None
 
     ### SPECIAL METHODS ###
-
-    def __copy__(self, *args):
-        r'''Copies bend after.
-
-        ..  container:: example
-
-            ::
-
-                >>> import copy
-                >>> bend_1 = indicatortools.BendAfter(bend_amount=-2)
-                >>> bend_2 = copy.copy(bend_1)
-
-            ::
-
-                >>> str(bend_1) == str(bend_2)
-                True
-
-            ::
-
-                >>> bend_1 == bend_2
-                True
-
-            ::
-
-                >>> bend_1 is bend_2
-                False
-
-        Returns new bend after.
-        '''
-        return type(self)(self.bend_amount)
-
-    def __eq__(self, expr):
-        r'''Is true when `expr` is a bend after indication with bend amount
-        equal to that of this bend after indication after. Otherwise false.
-
-        ..  container:: example
-
-            ::
-
-                >>> bend_1 = indicatortools.BendAfter(bend_amount=-4)
-                >>> bend_2 = indicatortools.BendAfter(bend_amount=-4)
-                >>> bend_3 = indicatortools.BendAfter(bend_amount=-2)
-
-            ::
-
-                >>> bend_1 == bend_1
-                True
-                >>> bend_1 == bend_2
-                True
-                >>> bend_1 == bend_3
-                False
-
-            ::
-
-                >>> bend_2 == bend_1
-                True
-                >>> bend_2 == bend_2
-                True
-                >>> bend_2 == bend_3
-                False
-
-            ::
-
-                >>> bend_3 == bend_1
-                False
-                >>> bend_3 == bend_2
-                False
-                >>> bend_3 == bend_3
-                True
-
-        Returns boolean.
-        '''
-        if isinstance(expr, type(self)):
-            if self.bend_amount == expr.bend_amount:
-                return True
-        return False
-
-    def __hash__(self):
-        r'''Hashes bend after.
-
-        Required to be explicitly redefined on Python 3 if __eq__ changes.
-
-        Returns integer.
-        '''
-        return super(BendAfter, self).__hash__()
 
     def __str__(self):
         r'''Gets string representation of bend after.
@@ -139,6 +73,14 @@ class BendAfter(AbjadObject):
         '''
         return r"- \bendAfter #'{}".format(self.bend_amount)
 
+    ### PRIVATE METHODS ###
+
+    def _get_lilypond_format_bundle(self, component=None):
+        from abjad.tools import systemtools
+        lilypond_format_bundle = systemtools.LilyPondFormatBundle()
+        lilypond_format_bundle.right.articulations.append(str(self))
+        return lilypond_format_bundle
+
     ### PRIVATE PROPERTIES ###
 
     @property
@@ -149,13 +91,6 @@ class BendAfter(AbjadObject):
     def _lilypond_format(self):
         return str(self)
 
-    @property
-    def _lilypond_format_bundle(self):
-        from abjad.tools import systemtools
-        lilypond_format_bundle = systemtools.LilyPondFormatBundle()
-        lilypond_format_bundle.right.articulations.append(str(self))
-        return lilypond_format_bundle
-
     ### PUBLIC PROPERTIES ###
 
     @property
@@ -164,12 +99,38 @@ class BendAfter(AbjadObject):
 
         ..  container:: example
 
+            **Example 1.** Fall:
+
             ::
 
-                >>> bend = indicatortools.BendAfter()
+                >>> bend = indicatortools.BendAfter(-4)
                 >>> bend.bend_amount
                 -4.0
+
+        ..  container:: example
+
+            **Example 2.** Doit:
+
+            ::
+
+                >>> bend = indicatortools.BendAfter(2)
+                >>> bend.bend_amount
+                2.0 
 
         Returns float.
         '''
         return self._bend_amount
+
+    @property
+    def default_scope(self):
+        r'''Gets default scope of bend after.
+
+        ..  container:: example
+
+            >>> bend = indicatortools.BendAfter(-4)
+            >>> bend.default_scope is None
+            True
+
+        Returns none.
+        '''
+        return self._default_scope

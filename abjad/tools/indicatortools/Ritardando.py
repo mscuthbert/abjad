@@ -1,12 +1,14 @@
 # -*- encoding: utf-8 -*-
-from abjad.tools.abctools.AbjadObject import AbjadObject
+from abjad.tools.abctools.AbjadValueObject import AbjadValueObject
 from abjad.tools.topleveltools.new import new
 
 
-class Ritardando(AbjadObject):
+class Ritardando(AbjadValueObject):
     r'''A ritardando.
 
     ..  container:: example
+
+        **Example 1.** Default ritardando:
 
         ::
 
@@ -14,9 +16,6 @@ class Ritardando(AbjadObject):
             >>> score = Score([staff])
             >>> ritardando = indicatortools.Ritardando()
             >>> attach(ritardando, staff[0])
-
-        ::
-
             >>> show(score) # doctest: +SKIP
 
         ..  doctest::
@@ -29,6 +28,40 @@ class Ritardando(AbjadObject):
                             \large
                                 \upright
                                     rit.
+                            }
+                    d'4
+                    e'4
+                    f'4
+                }
+            >>
+
+    ..  container:: example
+
+        **Example 2.** Custom ritardando:
+
+        ::
+
+            >>> markup = Markup(r'\bold { \italic { ritardando } }')
+            >>> ritardando = indicatortools.Ritardando(markup=markup)
+            >>> staff = Staff("c'4 d' e' f'")
+            >>> score = Score([staff])
+            >>> attach(ritardando, staff[0])
+            >>> show(score) # doctest: +SKIP
+
+        ..  doctest::
+
+            >>> print(format(score))
+            \new Score <<
+                \new Staff {
+                    c'4
+                        ^ \markup {
+                            \bold
+                                {
+                                    \italic
+                                        {
+                                            ritardando
+                                        }
+                                }
                             }
                     d'4
                     e'4
@@ -58,95 +91,19 @@ class Ritardando(AbjadObject):
         from abjad.tools import scoretools
         # TODO: make default scope work
         #self._default_scope = scoretools.Score
+        self._default_scope = None
         if markup is not None:
             assert isinstance(markup, markuptools.Markup)
         self._markup = markup
 
     ### SPECIAL METHODS ###
 
-    def __copy__(self, *args):
-        r'''Copies ritardando.
-
-        ..  container:: example
-
-            ::
-
-                >>> import copy
-                >>> markup = Markup(r'\bold { \italic { ritardando } }')
-                >>> ritardando_1 = indicatortools.Ritardando(markup=markup)
-                >>> ritardando_2 = copy.copy(ritardando_1)
-
-            ::
-
-                >>> str(ritardando_1) == str(ritardando_2)
-                True
-
-            ::
-
-                >>> ritardando_1 == ritardando_2
-                True
-
-            ::
-
-                >>> ritardando_1 is ritardando_2
-                False
-
-        Returns new ritardando.
-
-        '''
-        return type(self)(markup=self.markup)
-
-    def __eq__(self, expr):
-        r'''Is true when `expr` is another ritardando. Otherwise false.
-
-        ..  container:: example
-
-            ::
-
-                >>> ritardando_1 = indicatortools.Ritardando(
-                ...     markup=Markup('rit.')
-                ...     )
-                >>> ritardando_2 = indicatortools.Ritardando(
-                ...     markup=Markup('ritardando')
-                ...     )
-
-            ::
-
-                >>> ritardando_1 == ritardando_1
-                True
-                >>> ritardando_1 == ritardando_2
-                True
-
-            ::
-
-                >>> ritardando_2 == ritardando_1
-                True
-                >>> ritardando_2 == ritardando_2
-                True
-
-        Ignores markup of ritardando.
-                
-        Returns boolean.
-        '''
-        if isinstance(expr, type(self)):
-            return True
-        return False
-
-    def __hash__(self):
-        r'''Hashes ritardando.
-
-        Required to be explicitly redefined on Python 3 if __eq__ changes.
-
-        Returns integer.
-        '''
-        return super(Ritardando, self).__hash__()
-
     def __str__(self):
         r'''Gets string representation of ritardando.
 
         ..  container:: example
 
-            String representation of ritardando with default markup:
+            **Example 1.** Default ritardando:
 
             ::
 
@@ -159,7 +116,7 @@ class Ritardando(AbjadObject):
 
         ..  container:: example
 
-            String representation of ritardando with custom markup:
+            **Example 2.** Custom ritardando:
 
             ::
 
@@ -183,18 +140,6 @@ class Ritardando(AbjadObject):
     ### PRIVATE PROPERTIES ###
 
     @property
-    def _attribute_manifest(self):
-        from abjad.tools import systemtools
-        from ide import idetools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='markup',
-                command='m',
-                editor=idetools.getters.get_markup,
-                ),
-            )
-
-    @property
     def _contents_repr_string(self):
         return str(self)
 
@@ -208,8 +153,9 @@ class Ritardando(AbjadObject):
     def _lilypond_format(self):
         return str(self)
 
-    @property
-    def _lilypond_format_bundle(self):
+    ### PRIVATE METHODS ###
+
+    def _get_lilypond_format_bundle(self, component=None):
         from abjad.tools import systemtools
         lilypond_format_bundle = systemtools.LilyPondFormatBundle()
         markup = self._to_markup()
@@ -218,8 +164,6 @@ class Ritardando(AbjadObject):
         lilypond_format_bundle.right.markup.extend(markup_format_pieces)
         return lilypond_format_bundle
         
-    ### PRIVATE METHODS ###
-
     def _to_markup(self):
         if self.markup is not None:
             return self.markup
@@ -228,16 +172,63 @@ class Ritardando(AbjadObject):
     ### PUBLIC PROPERTIES ###
 
     @property
-    def markup(self):
-        r'''Gets markup of ritardando.
+    def default_scope(self):
+        r'''Gets default scope of ritardando.
 
         ..  container:: example
+
+            **Example 1.** Default ritardando:
+
+            ::
+
+                >>> ritardando = indicatortools.Ritardando()
+                >>> ritardando.default_scope is None
+                True
+
+        ..  container:: example
+
+            **Example 2.** Custom ritardando:
 
             ::
 
                 >>> markup = Markup(r'\bold { \italic { ritardando } }')
                 >>> ritardando = indicatortools.Ritardando(markup=markup)
-                >>> print(str(ritardando.markup))
+                >>> ritardando.default_scope is None
+                True
+
+        ..  todo:: Make ritardandi score-scoped.
+
+        Returns none (but should return score).
+        '''
+        return self._default_scope
+
+    @property
+    def markup(self):
+        r'''Gets markup of ritardando.
+
+        ..  container:: example
+
+            **Example 1.** Default ritardando:
+
+            ::
+
+                >>> ritardando = indicatortools.Ritardando()
+                >>> ritardando.markup is None
+                True
+
+        ..  container:: example
+
+            **Example 2.** Custom ritardando:
+
+            ::
+
+                >>> markup = Markup(r'\bold { \italic { ritardando } }')
+                >>> ritardando = indicatortools.Ritardando(markup=markup)
+                >>> show(ritardando.markup) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(ritardando.markup)
                 \markup {
                     \bold
                         {
@@ -247,6 +238,10 @@ class Ritardando(AbjadObject):
                                 }
                         }
                     }
+
+        Set to markup or none.
+
+        Defaults to ``'rit.'``.
 
         Returns markup or none.
         '''

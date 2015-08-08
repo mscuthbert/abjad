@@ -1,5 +1,4 @@
 # -*- encoding: utf-8 -*-
-from abjad.tools import durationtools
 from abjad.tools.timespantools.TimeRelation import TimeRelation
 
 
@@ -145,10 +144,18 @@ class TimespanTimespanTimeRelation(TimeRelation):
     Timespan / timespan time relations are immutable.
     '''
 
+    ### CLASS VARIABLES ###
+
+    __documentation_section__ = 'Time relations'
+
+    __slots__ = (
+        '_timespan_1',
+        '_timespan_2',
+        )
+
     ### INITIALIZER ###
 
     def __init__(self, inequality=None, timespan_1=None, timespan_2=None):
-        from abjad.tools import timespantools
         TimeRelation.__init__(self, inequality=inequality)
         self._timespan_1 = timespan_1
         self._timespan_2 = timespan_2
@@ -303,7 +310,7 @@ class TimespanTimespanTimeRelation(TimeRelation):
     def __hash__(self):
         r'''Hashes time relation.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''

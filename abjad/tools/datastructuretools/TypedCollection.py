@@ -70,7 +70,7 @@ class TypedCollection(AbjadObject):
     def __hash__(self):
         r'''Hashes typed collection.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''
@@ -126,12 +126,12 @@ class TypedCollection(AbjadObject):
     def _repr_specification(self):
         from abjad.tools import systemtools
         manager = systemtools.StorageFormatManager
-        names =  manager.get_signature_keyword_argument_names(self)
+        names = manager.get_signature_keyword_argument_names(self)
         keyword_argument_names = list(names)
         if 'items' in keyword_argument_names:
             keyword_argument_names.remove('items')
         keyword_argument_names = tuple(keyword_argument_names)
-        positional_argument_values=(
+        positional_argument_values = (
             self._collection,
             )
         return systemtools.StorageFormatSpecification(
@@ -150,7 +150,7 @@ class TypedCollection(AbjadObject):
         if 'items' in keyword_argument_names:
             keyword_argument_names.remove('items')
         keyword_argument_names = tuple(keyword_argument_names)
-        positional_argument_values=(
+        positional_argument_values = (
             self._collection,
             )
         return systemtools.StorageFormatSpecification(

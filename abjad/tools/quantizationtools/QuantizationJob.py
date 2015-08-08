@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-import inspect
+from __future__ import print_function
 from abjad.tools.abctools import AbjadObject
 
 
@@ -98,10 +98,14 @@ class QuantizationJob(AbjadObject):
         Returns none.
         '''
         from abjad.tools import quantizationtools
-        #print self.q_event_proxies
+        #print('XXX')
+        #print(format(self.q_event_proxies[0]))
 
         q_grid = quantizationtools.QGrid()
         q_grid.fit_q_events(self.q_event_proxies)
+
+        #print(format(q_grid))
+
         old_q_grids = []
         new_q_grids = [q_grid]
 
@@ -113,6 +117,10 @@ class QuantizationJob(AbjadObject):
             #    print '\t', x.rtm_format
             new_q_grids.extend(search_results)
             old_q_grids.append(q_grid)
+
+        #for q_grid in old_q_grids:
+        #    print('\t', q_grid)
+        #print()
 
         self._q_grids = tuple(old_q_grids)
 
@@ -131,46 +139,14 @@ class QuantizationJob(AbjadObject):
                             return True
         return False
 
-    def __getnewargs__(self):
-        r'''Gets new arguments.
-
-        Returns tuple.
-        '''
-        return (
-            self.job_id,
-            self.search_tree,
-            self.q_event_proxies,
-            self.q_grids,
-            )
-
-    def __getstate__(self):
-        r'''Gets state.
-
-        Returns dictionary.
-        '''
-        return {
-            '_job_id': self.job_id,
-            '_q_event_proxies': self.q_event_proxies,
-            '_q_grids': self.q_grids,
-            '_search_tree': self.search_tree,
-            }
-
     def __hash__(self):
         r'''Hashes quantization job.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''
         return super(QuantizationJob, self).__hash__()
-
-    def __setstate__(self, state):
-        r'''Sets state.
-
-        Returns none.
-        '''
-        for key, value in state.items():
-            setattr(self, key, value)
 
     ### PUBLIC PROPERTIES ###
 

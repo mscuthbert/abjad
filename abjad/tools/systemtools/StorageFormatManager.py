@@ -1,14 +1,31 @@
 # -*- encoding: utf-8 -*-
 import collections
+import inspect
 import sys
 import types
+from abjad.tools.abctools import AbjadObject
 
 
-class StorageFormatManager(object):
+class StorageFormatManager(AbjadObject):
     r'''Manages Abjad object storage formats.
     '''
 
+    ### CLASS VARIABLES ###
+
+    __documentation_section__ = 'Storage formatting'
+
     ### PUBLIC METHODS ###
+
+    @staticmethod
+    def accepts_kwargs(subject):
+        r'''Is true when `subject` accepts \*\*kwargs. Otherwise false.
+
+        Returns boolean.
+        '''
+        args, varargs, varkw, defaults = inspect.getargspec(subject.__init__)
+        if varkw is not None:
+            return True
+        return False
 
     @staticmethod
     def compare(object_one, object_two):
@@ -18,11 +35,11 @@ class StorageFormatManager(object):
         '''
         if not isinstance(object_two, type(object_one)):
             return False
-        if StorageFormatManager.get_positional_argument_values(object_one) != \
-            StorageFormatManager.get_positional_argument_values(object_two):
+        if (StorageFormatManager.get_positional_argument_values(object_one) !=
+            StorageFormatManager.get_positional_argument_values(object_two)):
             return False
-        if StorageFormatManager.get_keyword_argument_values(object_one) != \
-            StorageFormatManager.get_keyword_argument_values(object_two):
+        if (StorageFormatManager.get_keyword_argument_values(object_one) !=
+            StorageFormatManager.get_keyword_argument_values(object_two)):
             return False
         return True
 
@@ -36,13 +53,13 @@ class StorageFormatManager(object):
 
         Returns list.
         '''
+        from abjad.tools import datastructuretools
         result = []
         prefix, infix, suffix = StorageFormatManager.get_indentation_strings(
             is_indented)
         if isinstance(value, types.MethodType):
             return result
         if isinstance(value, type):
-        #if type(value) is abc.ABCMeta:
             if as_storage_format:
                 value = '{}.{}'.format(
                     StorageFormatManager.get_tools_package_name(value),
@@ -94,7 +111,10 @@ class StorageFormatManager(object):
                 else:
                     result[-1] = result[-1].rstrip()
             result.append('{}{}'.format(prefix, braces[1]))
-        elif isinstance(value, collections.OrderedDict):
+        elif isinstance(value, (
+            collections.OrderedDict,
+            datastructuretools.TypedOrderedDict,
+            )):
             result.append('[{}'.format(infix))
             for item in list(value.items()):
                 item_pieces = StorageFormatManager.format_one_value(
@@ -258,6 +278,32 @@ class StorageFormatManager(object):
     def get_import_statements(subject):
         r'''Gets import statements for `subject`.
 
+        ..  container:: example
+
+            **Example 1.** Gets import statements for object in Abjad mainline:
+
+            ::
+
+                >>> note = Note("c'4")
+                >>> systemtools.StorageFormatManager.get_import_statements(
+                ...     note
+                ...     )
+                ('from abjad.tools import scoretools',)
+
+        ..  container:: example
+
+            **Example 2.** Gets import statements for object in Abjad
+            experimental branch:
+
+            ::
+
+                >>> from experimental import makertools
+                >>> division_maker = makertools.DivisionMaker()
+                >>> systemtools.StorageFormatManager.get_import_statements(
+                ...     division_maker
+                ...     )
+                ('from experimental.tools import makertools',)
+
         Returns tuple of strings.
         '''
         manager = StorageFormatManager
@@ -267,12 +313,16 @@ class StorageFormatManager(object):
             root_package_name = manager.get_root_package_name(class_)
             if root_package_name in ('builtins', '__builtin__'):
                 continue
-            if root_package_name != 'abjad':
-                import_statement = 'import {}'.format(root_package_name)
-            else:
+            elif root_package_name == 'abjad':
                 tools_package_name = manager.get_tools_package_name(class_)
                 import_statement = 'from abjad.tools import {}'.format(
                     tools_package_name)
+            elif root_package_name == 'experimental':
+                tools_package_name = manager.get_tools_package_name(class_)
+                import_statement = 'from experimental.tools import {}'.format(
+                    tools_package_name)
+            else:
+                import_statement = 'import {}'.format(root_package_name)
             import_statements.add(import_statement)
         return tuple(sorted(import_statements))
 
@@ -352,13 +402,29 @@ class StorageFormatManager(object):
         ):
         r'''Gets interpreter representation format.
         '''
-        assert '_repr_specification' in dir(subject)
+        assert (
+            '_repr_specification' in dir(subject) or
+            hasattr(subject, '_repr_specification')
+            )
         specification = subject._repr_specification
         pieces = StorageFormatManager.get_format_pieces(
             specification,
             as_storage_format=False,
             )
         return ''.join(pieces)
+
+    @staticmethod
+    def get_root_package_name(subject):
+        r'''Gets root package name of `subject`.
+
+        Returns string.
+        '''
+        if StorageFormatManager.is_instance(subject):
+            class_ = type(subject)
+        else:
+            class_ = subject
+        root_package_name, _, _ = class_.__module__.partition('.')
+        return root_package_name
 
     @staticmethod
     def get_signature_keyword_argument_names(subject):
@@ -414,7 +480,10 @@ class StorageFormatManager(object):
         ):
         r'''Gets storage format.
         '''
-        assert '_storage_format_specification' in dir(subject)
+        assert (
+            '_storage_format_specification' in dir(subject) or
+            hasattr(subject, '_storage_format_specification')
+            )
         specification = subject._storage_format_specification
         pieces = StorageFormatManager.get_format_pieces(
             specification,
@@ -422,19 +491,6 @@ class StorageFormatManager(object):
             )
         result = ''.join(pieces)
         return result
-
-    @staticmethod
-    def get_root_package_name(subject):
-        r'''Gets root package name of `subject`.
-
-        Returns string.
-        '''
-        if StorageFormatManager.is_instance(subject):
-            class_ = type(subject)
-        else:
-            class_ = subject
-        root_package_name, _, _ = class_.__module__.partition('.')
-        return root_package_name
 
     @staticmethod
     def get_tools_package_name(subject):
@@ -487,6 +543,53 @@ class StorageFormatManager(object):
     def get_types(subject, result=None):
         r'''Gets all non-builtin types referenced in storage format.
 
+        ..  container:: example
+
+            **Example 1.**
+
+            ::
+
+                >>> maker = rhythmmakertools.EvenDivisionRhythmMaker(
+                ...     burnish_specifier=rhythmmakertools.BurnishSpecifier(
+                ...         left_classes=[Rest],
+                ...         left_counts=[1],
+                ...         right_classes=[Rest],
+                ...         right_counts=[2],
+                ...         outer_divisions_only=True,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> types = systemtools.StorageFormatManager.get_types(maker)
+                >>> for _ in types:
+                ...     _
+                ...
+                <class 'abjad.tools.rhythmmakertools.BurnishSpecifier.BurnishSpecifier'>
+                <class 'abjad.tools.rhythmmakertools.EvenDivisionRhythmMaker.EvenDivisionRhythmMaker'>
+                <class 'abjad.tools.scoretools.Rest.Rest'>
+
+        ..  container:: example
+
+            **Example 2.**
+
+            ::
+
+                >>> dictionary = datastructuretools.TypedOrderedDict(
+                ...     item_class=pitchtools.NamedPitch,
+                ...     )
+
+            ::
+
+                >>> types = systemtools.StorageFormatManager.get_types(dictionary)
+                >>> for _ in types:
+                ...     _
+                ...
+                <class 'abjad.tools.datastructuretools.TypedOrderedDict.TypedOrderedDict'>
+                <class 'abjad.tools.pitchtools.NamedPitch.NamedPitch'>
+
+            .. todo:: Shouldn't the above example **not** return OrderedDict?
+
         Returns tuple of types.
         '''
         from abjad.tools import abctools
@@ -524,9 +627,11 @@ class StorageFormatManager(object):
             for value in subject:
                 result.update(manager.get_types(value))
 
+        arguments.append(subject)
         for argument in arguments:
             if not isinstance(argument, type_type):
-                result.update(manager.get_types(argument))
+                if argument is not subject:
+                    result.update(manager.get_types(argument))
             if isinstance(argument, type_type):
                 if not issubclass(argument, abctools.AbjadObject):
                     continue
@@ -537,21 +642,12 @@ class StorageFormatManager(object):
                 ):
                 continue
             if not isinstance(argument, type_type):
-                result.update(manager.get_types(argument))
+                if argument is not subject:
+                    result.update(manager.get_types(argument))
                 argument = type(argument)
             result.add(argument)
 
-        if isinstance(subject, str):
-            return result
-        elif type(subject).__module__ in (
-            '__builtin__',
-            'abc',
-            ):
-            return result
-        elif not isinstance(subject, type_type):
-            result.add(type(subject))
-        else:
-            result.add(subject)
+        result = sorted(result, key=lambda x: (x.__module__, x.__name__))
 
         return result
 

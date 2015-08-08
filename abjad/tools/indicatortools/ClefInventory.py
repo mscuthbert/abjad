@@ -6,7 +6,7 @@ from abjad.tools.datastructuretools.TypedList import TypedList
 
 
 class ClefInventory(TypedList):
-    '''An ordered list of clefs.
+    r'''An ordered list of clefs.
 
     ::
 
@@ -72,11 +72,6 @@ class ClefInventory(TypedList):
         return lilypond_file
 
     ### PRIVATE PROPERTIES ###
-
-    @property
-    def _attribute_manifest(self):
-        from abjad.tools import systemtools
-        return systemtools.AttributeManifest()
 
     @property
     def _item_coercer(self):

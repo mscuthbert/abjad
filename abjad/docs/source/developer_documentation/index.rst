@@ -1,44 +1,22 @@
-=======================
-Developer documentation
-=======================
+For developers
+==============
 
-Reading and writing code
-------------------------
+..  toctree::
 
-..  container:: two-column 
-
-    ..  toctree::
-        :maxdepth: 2
-        :numbered:
-
-        codebase/index
-        coding_standards/index
-        documentation/index
-        tests/index
-
-
-Developer tools
----------------
-
-..  container:: two-column 
-
-    ..  toctree::
-        :maxdepth: 2
-        :numbered:
-
-        ajv/index
-        ajv_book/index
-
+    codebase
+    coding_standards
+    documentation
+    tests
+    ajv
 
 Development notes
 -----------------
 
 ..  toctree::
-    :maxdepth: 2
-    :numbered:
+    :maxdepth: 1
 
-    timing/index
-    profiling/index
-    memory/index
-    class_attributes/index
-    slots/index
+    timing
+    profiling
+    memory
+    class_attributes
+    slots

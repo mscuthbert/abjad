@@ -9,10 +9,13 @@ class DurationSpellingSpecifier(AbjadValueObject):
 
     ### CLASS VARIABLES ###
 
+    __documentation_section__ = 'Specifiers'
+
     __slots__ = (
         '_decrease_durations_monotonically',
+        '_forbid_meter_rewriting',
         '_forbidden_written_duration',
-        '_permit_meter_rewriting',
+        '_rewrite_meter',
         '_spell_metrically',
         )
 
@@ -21,22 +24,29 @@ class DurationSpellingSpecifier(AbjadValueObject):
     def __init__(
         self,
         decrease_durations_monotonically=True,
+        forbid_meter_rewriting=None,
         forbidden_written_duration=None,
-        permit_meter_rewriting=None,
+        rewrite_meter=None,
         spell_metrically=None,
         ):
+        from abjad.tools import rhythmmakertools
         assert isinstance(decrease_durations_monotonically, bool)
         if forbidden_written_duration is not None:
             forbidden_written_duration = durationtools.Duration(
                 forbidden_written_duration)
-        self._decrease_durations_monotonically = decrease_durations_monotonically
+        self._decrease_durations_monotonically = \
+            decrease_durations_monotonically
         self._forbidden_written_duration = forbidden_written_duration
-        if spell_metrically is not None and spell_metrically != 'unassignable':
-            assert isinstance(spell_metrically, bool)
+        assert isinstance(rewrite_meter, (bool, type(None)))
+        self._rewrite_meter = rewrite_meter
+        assert (spell_metrically is None or 
+            isinstance(spell_metrically, bool) or
+            spell_metrically == 'unassignable' or
+            isinstance(spell_metrically, rhythmmakertools.PartitionTable))
         self._spell_metrically = spell_metrically
-        if permit_meter_rewriting is not None:
-            permit_meter_rewriting = bool(permit_meter_rewriting)
-        self._permit_meter_rewriting = permit_meter_rewriting
+        if forbid_meter_rewriting is not None:
+            forbid_meter_rewriting = bool(forbid_meter_rewriting)
+        self._forbid_meter_rewriting = forbid_meter_rewriting
 
     ### SPECIAL METHODS ###
 
@@ -74,34 +84,71 @@ class DurationSpellingSpecifier(AbjadValueObject):
         '''
         return AbjadValueObject.__repr__(self)
 
-    ### PRIVATE PROPERTIES ###
+    ### PRIVATE METHODS ###
 
-    @property
-    def _attribute_manifest(self):
-        from abjad.tools import systemtools
-        from ide import idetools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='decrease_durations_monotonically',
-                command='ddm',
-                editor=idetools.getters.get_boolean,
-                ),
-            systemtools.AttributeDetail(
-                name='forbidden_written_duration',
-                command='fwd',
-                editor=idetools.getters.get_duration,
-                ),
-            systemtools.AttributeDetail(
-                name='spell_metrically',
-                command='sm',
-                editor=idetools.getters.get_boolean,
-                ),
-            systemtools.AttributeDetail(
-                name='permit_meter_rewriting',
-                command='pmr',
-                editor=idetools.getters.get_boolean,
-                ),
+    @staticmethod
+    def _rewrite_meter_(
+        selections, 
+        meters, 
+        reference_meters=None,
+        rewrite_tuplets=False,
+        use_messiaen_style_ties=False,
+        ):
+        from abjad.tools import metertools
+        from abjad.tools import scoretools
+        from abjad.tools.topleveltools import mutate
+        meters = [metertools.Meter(_) for _ in meters]
+        durations = [durationtools.Duration(_) for _ in meters]
+        reference_meters = reference_meters or ()
+        selections = DurationSpellingSpecifier._split_at_measure_boundaries(
+            selections,
+            meters,
+            use_messiaen_style_ties=use_messiaen_style_ties,
             )
+        measures = scoretools.make_spacer_skip_measures(durations)
+        staff = scoretools.Staff(measures)
+        mutate(staff).replace_measure_contents(selections)
+        for measure, meter in zip(staff, meters):
+            for reference_meter in reference_meters:
+                if str(reference_meter) == str(meter):
+                    meter = reference_meter
+                    break
+            mutate(measure[:]).rewrite_meter(
+                meter,
+                rewrite_tuplets=rewrite_tuplets,
+                use_messiaen_style_ties=use_messiaen_style_ties,
+                )
+        selections = []
+        for measure in staff:
+            selections.append(measure[:])
+        return selections
+
+    @staticmethod
+    def _split_at_measure_boundaries(
+        selections, 
+        meters,
+        use_messiaen_style_ties=False,
+        ):
+        from abjad.tools import metertools
+        from abjad.tools import scoretools
+        from abjad.tools import sequencetools
+        from abjad.tools.topleveltools import inspect_
+        from abjad.tools.topleveltools import mutate
+        meters = [metertools.Meter(_) for _ in meters]
+        durations = [durationtools.Duration(_) for _ in meters]
+        music = sequencetools.flatten_sequence(selections)
+        assert isinstance(music, list), repr(music)
+        total_duration = sum(durations)
+        music_duration = sum(inspect_(_).get_duration() for _ in music)
+        assert total_duration == music_duration
+        voice = scoretools.Voice(music)
+        mutate(voice[:]).split(
+            durations=durations,
+            tie_split_notes=True,
+            use_messiaen_style_ties=use_messiaen_style_ties,
+            )
+        selections = list(voice[:])
+        return selections
 
     ### PUBLIC PROPERTIES ###
 
@@ -125,6 +172,24 @@ class DurationSpellingSpecifier(AbjadValueObject):
         return self._decrease_durations_monotonically
 
     @property
+    def forbid_meter_rewriting(self):
+        r'''Is true when meter rewriting is forbidden.
+
+        ..  container:: example
+
+            ::
+
+                >>> specifier = rhythmmakertools.DurationSpellingSpecifier()
+                >>> specifier.forbid_meter_rewriting is None
+                True
+
+        Defaults to none.
+
+        Returns boolean or none.
+        '''
+        return self._forbid_meter_rewriting
+
+    @property
     def forbidden_written_duration(self):
         r'''Gets forbidden written duration.
 
@@ -143,22 +208,25 @@ class DurationSpellingSpecifier(AbjadValueObject):
         return self._forbidden_written_duration
 
     @property
-    def permit_meter_rewriting(self):
-        r'''Is true when meter rewriting is permitted.
+    def rewrite_meter(self):
+        r'''Is true when all output divisions should rewrite meter.
+        Otherwise false.
 
         ..  container:: example
 
             ::
 
                 >>> specifier = rhythmmakertools.DurationSpellingSpecifier()
-                >>> specifier.permit_meter_rewriting is None
+                >>> specifier.rewrite_meter is None
                 True
 
-        Defaults to true.
+        Defaults to none.
 
-        Returns boolean or none.
+        Set to true, false or none.
+
+        Returns true, false or none.
         '''
-        return self._permit_meter_rewriting
+        return self._rewrite_meter
 
     @property
     def spell_metrically(self):

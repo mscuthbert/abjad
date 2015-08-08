@@ -1,5 +1,4 @@
 # -*- encoding: utf-8 -*-
-import os
 
 
 def show(expr, return_timing=False, **kwargs):
@@ -27,7 +26,7 @@ def show(expr, return_timing=False, **kwargs):
     '''
     from abjad.tools import systemtools
     from abjad.tools import topleveltools
-    assert '__illustrate__' in dir(expr)
+    assert hasattr(expr, '__illustrate__')
     result = topleveltools.persist(expr).as_pdf(**kwargs)
     pdf_file_path = result[0]
     abjad_formatting_time = result[1]

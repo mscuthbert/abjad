@@ -1,5 +1,4 @@
 # -*- encoding: utf-8 -*-
-import time
 from abjad.tools.abctools import ContextManager
 
 
@@ -20,8 +19,12 @@ class ForbidUpdate(ContextManager):
 
     ### CLASS VARIABLES ###
 
+    __documentation_section__ = 'Context managers'
+
     __slots__ = (
         '_component',
+        '_update_on_enter',
+        '_update_on_exit',
         )
 
     ### INITIALIZER ###
@@ -29,11 +32,19 @@ class ForbidUpdate(ContextManager):
     def __init__(
         self,
         component=None,
+        update_on_enter=True,
+        update_on_exit=None,
         ):
         from abjad.tools import scoretools
         prototype = (scoretools.Component, type(None))
         assert isinstance(component, prototype)
         self._component = component
+        if update_on_enter is not None:
+            update_on_enter = bool(update_on_enter)
+        self._update_on_enter = update_on_enter
+        if update_on_exit is not None:
+            update_on_exit = bool(update_on_exit)
+        self._update_on_exit = update_on_exit
 
     ### SPECIAL METHODS ###
 
@@ -54,6 +65,8 @@ class ForbidUpdate(ContextManager):
         '''
         if self.component is not None:
             self.component._is_forbidden_to_update = False
+            if self.update_on_exit:
+                self.component._update_now(offsets=True)
 
     ### PUBLIC PROPERTIES ###
 
@@ -64,3 +77,19 @@ class ForbidUpdate(ContextManager):
         Return component.
         '''
         return self._component
+
+    @property
+    def update_on_enter(self):
+        r'''True if context manager updates offsets on enter.
+
+        Returns boolean or none.
+        '''
+        return self._update_on_enter
+
+    @property
+    def update_on_exit(self):
+        r'''True if context manager updates offsets on exit.
+
+        Returns boolean or none.
+        '''
+        return self._update_on_exit

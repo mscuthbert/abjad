@@ -1,7 +1,9 @@
 # -*- encoding: utf-8 -*-
 import abc
+import copy
 from abjad.tools import datastructuretools
 from abjad.tools import durationtools
+from abjad.tools import mathtools
 from abjad.tools import scoretools
 from abjad.tools import selectiontools
 from abjad.tools import sequencetools
@@ -9,8 +11,8 @@ from abjad.tools import spannertools
 from abjad.tools.abctools.AbjadValueObject import AbjadValueObject
 from abjad.tools.topleveltools import attach
 from abjad.tools.topleveltools import detach
+from abjad.tools.topleveltools import inspect_
 from abjad.tools.topleveltools import iterate
-from abjad.tools.topleveltools import new
 
 
 class RhythmMaker(AbjadValueObject):
@@ -19,11 +21,13 @@ class RhythmMaker(AbjadValueObject):
 
     ### CLASS VARIABLES ###
 
+    __documentation_section__ = 'Rhythm-makers'
+
     __slots__ = (
         '_beam_specifier',
         '_duration_spelling_specifier',
         '_output_masks',
-        '_seeds',
+        '_rotation',
         '_tie_specifier',
         '_tuplet_spelling_specifier',
         )
@@ -50,9 +54,11 @@ class RhythmMaker(AbjadValueObject):
         self._duration_spelling_specifier = duration_spelling_specifier
         assert isinstance(duration_spelling_specifier, prototype)
         if output_masks is not None:
-            output_masks = tuple(output_masks)
-            prototype = rhythmmakertools.BooleanPattern
-            assert (isinstance(_, prototype) for _ in output_masks)
+            if isinstance(output_masks, rhythmmakertools.BooleanPattern):
+                output_masks = (output_masks,)
+            output_masks = rhythmmakertools.BooleanPatternInventory(
+                items=output_masks,
+                )
         self._output_masks = output_masks
         prototype = (rhythmmakertools.TieSpecifier, type(None))
         assert isinstance(tie_specifier, prototype)
@@ -63,7 +69,7 @@ class RhythmMaker(AbjadValueObject):
 
     ### SPECIAL METHODS ###
 
-    def __call__(self, divisions, seeds=None):
+    def __call__(self, divisions, rotation=None):
         r'''Calls rhythm-maker.
 
         Makes music as a list of selections.
@@ -76,12 +82,16 @@ class RhythmMaker(AbjadValueObject):
 
         Returns list of selections.
         '''
-        divisions = [durationtools.Division(x) for x in divisions]
-        seeds = self._to_tuple(seeds)
-        self._seeds = seeds
-        selections = self._make_music(divisions, seeds)
+        divisions = [mathtools.NonreducedFraction(_) for _ in divisions]
+        rotation = self._to_tuple(rotation)
+        self._rotation = rotation
+        selections = self._make_music(
+            divisions,
+            rotation,
+            )
         self._simplify_tuplets(selections)
-        self._tie_across_divisions(selections)
+        selections = self._flatten_trivial_tuplets(selections)
+        self._apply_tie_specifier(selections)
         self._validate_selections(selections)
         self._validate_tuplets(selections)
         return selections
@@ -126,7 +136,7 @@ class RhythmMaker(AbjadValueObject):
     def __hash__(self):
         r'''Hashes rhythm-maker.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''
@@ -134,8 +144,6 @@ class RhythmMaker(AbjadValueObject):
 
     def __illustrate__(self, divisions=None):
         r'''Illustrates rhythm-maker.
-
-        Defaults `divisions` to ``3/8``, ``4/8``, ``3/16``, ``4/16``.
 
         Returns LilyPond file.
         '''
@@ -170,10 +178,7 @@ class RhythmMaker(AbjadValueObject):
             return False
 
     def _apply_beam_specifier(self, selections):
-        from abjad.tools import rhythmmakertools
-        beam_specifier = self.beam_specifier
-        if beam_specifier is None:
-            beam_specifier = rhythmmakertools.BeamSpecifier()
+        beam_specifier = self._get_beam_specifier()
         if beam_specifier.beam_divisions_together:
             durations = []
             for x in selections:
@@ -200,35 +205,96 @@ class RhythmMaker(AbjadValueObject):
                 beam = spannertools.MultipartBeam()
                 attach(beam, cell)
 
-    def _apply_output_masks(self, selections):
+    def _apply_output_masks(self, selections, rotation):
         from abjad.tools import rhythmmakertools
         if not self.output_masks:
             return selections
         new_selections = []
-        duration_spelling_specifier = self.duration_spelling_specifier or \
-            rhythmmakertools.DurationSpellingSpecifier()
+        duration_spelling_specifier = self._get_duration_spelling_specifier()
         decrease_durations_monotonically = \
             duration_spelling_specifier.decrease_durations_monotonically
         forbidden_written_duration = \
             duration_spelling_specifier.forbidden_written_duration
+        tie_specifier = self._get_tie_specifier()
         length = len(selections)
         output_masks = self.output_masks
         for i, selection in enumerate(selections):
-            if not any(_._matches_index(i, length) for _ in output_masks):
+            matching_output_mask = output_masks.get_matching_pattern(
+                i, length, rotation=rotation)
+            if not matching_output_mask:
                 new_selections.append(selection)
                 continue
             duration = selection.get_duration()
-            new_selection = scoretools.make_leaves(
-                [None],
-                [duration],
-                decrease_durations_monotonically=\
-                    decrease_durations_monotonically,
-                forbidden_written_duration=forbidden_written_duration,
-                )
+            if isinstance(matching_output_mask, rhythmmakertools.SustainMask):
+                new_selection = scoretools.make_leaves(
+                    [0],
+                    [duration],
+                    decrease_durations_monotonically=\
+                        decrease_durations_monotonically,
+                    forbidden_written_duration=forbidden_written_duration,
+                    use_messiaen_style_ties=\
+                        tie_specifier.use_messiaen_style_ties,
+                    )
+            elif isinstance(matching_output_mask, rhythmmakertools.NullMask):
+                new_selections.append(selection)
+                continue
+            else:
+                use_multimeasure_rests = getattr(
+                    matching_output_mask,
+                    'use_multimeasure_rests',
+                    False,
+                    )
+                new_selection = scoretools.make_leaves(
+                    [None],
+                    [duration],
+                    decrease_durations_monotonically=\
+                        decrease_durations_monotonically,
+                    forbidden_written_duration=forbidden_written_duration,
+                    use_multimeasure_rests=use_multimeasure_rests,
+                    )
             for component in iterate(selection).by_class():
                 detach(spannertools.Tie, component)
             new_selections.append(new_selection)
         return new_selections
+
+    def _apply_tie_specifier(self, selections):
+        tie_specifier = self._get_tie_specifier()
+        tie_specifier(selections)
+
+    def _flatten_trivial_tuplets(self, selections):
+        tuplet_spelling_specifier = self._get_tuplet_spelling_specifier()
+        if not tuplet_spelling_specifier.flatten_trivial_tuplets:
+            return selections
+        new_selections = []
+        for selection in selections:
+            new_selection = []
+            for component in selection:
+                if not (isinstance(component, scoretools.Tuplet) and 
+                    component.is_trivial):
+                    new_selection.append(component)
+                    continue
+                spanners = inspect_(component).get_spanners()
+                contents = component[:]
+                for spanner in spanners:
+                    new_spanner = copy.copy(spanner)
+                    attach(new_spanner, contents)
+                new_selection.extend(contents)
+                del(component[:])
+            new_selection = selectiontools.Selection(new_selection)
+            new_selections.append(new_selection)
+        return new_selections
+
+    def _get_beam_specifier(self):
+        from abjad.tools import rhythmmakertools
+        if self.beam_specifier is not None:
+            return self.beam_specifier
+        return rhythmmakertools.BeamSpecifier()
+
+    def _get_duration_spelling_specifier(self):
+        from abjad.tools import rhythmmakertools
+        if self.duration_spelling_specifier is not None:
+            return self.duration_spelling_specifier
+        return rhythmmakertools.DurationSpellingSpecifier()
 
     @staticmethod
     def _get_rhythmic_staff(lilypond_file):
@@ -236,6 +302,18 @@ class RhythmMaker(AbjadValueObject):
         score = score_block.items[0]
         rhythmic_staff = score[-1]
         return rhythmic_staff
+
+    def _get_tie_specifier(self):
+        from abjad.tools import rhythmmakertools
+        if self.tie_specifier is not None:
+            return self.tie_specifier
+        return rhythmmakertools.TieSpecifier()
+
+    def _get_tuplet_spelling_specifier(self):
+        from abjad.tools import rhythmmakertools
+        if self.tuplet_spelling_specifier is not None:
+            return self.tuplet_spelling_specifier
+        return rhythmmakertools.TupletSpellingSpecifier()
 
     @staticmethod
     def _is_leaf_selection(expr):
@@ -250,9 +328,17 @@ class RhythmMaker(AbjadValueObject):
             return all(_ in prototype for _ in expr)
         return False
 
+    @staticmethod
+    def _make_cyclic_tuple_generator(iterable):
+        cyclic_tuple = datastructuretools.CyclicTuple(iterable)
+        i = 0
+        while True:
+            yield cyclic_tuple[i]
+            i += 1
+
     @abc.abstractmethod
-    def _make_music(self, divisions, seeds):
-        pass
+    def _make_music(self, divisions, rotation):
+        raise NotImplementedError
 
     def _make_secondary_divisions(
         self,
@@ -340,11 +426,7 @@ class RhythmMaker(AbjadValueObject):
         return result
 
     def _simplify_tuplets(self, selections):
-        from abjad.tools import rhythmmakertools
-        tuplet_spelling_specifier = self.tuplet_spelling_specifier
-        if tuplet_spelling_specifier is None:
-            tuplet_spelling_specifier = \
-                rhythmmakertools.TupletSpellingSpecifier()
+        tuplet_spelling_specifier = self._get_tuplet_spelling_specifier()
         if not tuplet_spelling_specifier.simplify_tuplets:
             return
         for tuplet in iterate(selections).by_class(scoretools.Tuplet):
@@ -360,21 +442,14 @@ class RhythmMaker(AbjadValueObject):
                     notes = scoretools.make_notes([0], [duration])
                     tuplet[:] = notes
 
-    def _tie_across_divisions(self, selections):
-        from abjad.tools import rhythmmakertools
-        tie_specifier = self.tie_specifier
-        if tie_specifier is None:
-            tie_specifier = rhythmmakertools.TieSpecifier()
-        tie_specifier._make_ties_across_divisions(selections)
-
     def _to_tuple(self, expr):
         if isinstance(expr, list):
             expr = tuple(expr)
         return expr
 
-    def _trivial_helper(self, talea, seeds):
-        if isinstance(seeds, int) and len(talea):
-            return sequencetools.rotate_sequence(talea, seeds)
+    def _trivial_helper(self, talea, rotation):
+        if isinstance(rotation, int) and len(talea):
+            return sequencetools.rotate_sequence(talea, rotation)
         return talea
 
     def _validate_selections(self, selections):

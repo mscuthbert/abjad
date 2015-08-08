@@ -1,58 +1,111 @@
 # -*- encoding: utf-8 -*-
 from abjad.tools import stringtools
-from abjad.tools.abctools import AbjadObject
+from abjad.tools.abctools import AbjadValueObject
 
 
-class Scheme(AbjadObject):
+class Scheme(AbjadValueObject):
     r'''Abjad model of Scheme code.
 
-    ::
+    ..  container:: example
 
-        >>> scheme = schemetools.Scheme(True)
-        >>> format(scheme)
-        '##t'
+        **Example 1.** A Scheme boolean value:
 
-    Scheme can represent nested structures:
+        ::
 
-    ::
+            >>> scheme = schemetools.Scheme(True)
+            >>> print(format(scheme))
+            ##t
 
-        >>> scheme = schemetools.Scheme(
-        ...     ('left', (1, 2, False)), ('right', (1, 2, 3.3)))
-        >>> format(scheme)
-        '#((left (1 2 #f)) (right (1 2 3.3)))'
+    ..  container:: example
 
-    Scheme wraps variable-length arguments into a tuple:
+        **Example 2.** A nested Scheme expession:
 
-    ::
+        ::
 
-        >>> scheme_1 = schemetools.Scheme(1, 2, 3)
-        >>> scheme_2 = schemetools.Scheme((1, 2, 3))
-        >>> format(scheme_1) == format(scheme_2)
-        True
+            >>> scheme = schemetools.Scheme(
+            ...     ('left', (1, 2, False)),
+            ...     ('right', (1, 2, 3.3))
+            ...     )
+            >>> print(format(scheme))
+            #((left (1 2 #f)) (right (1 2 3.3)))
 
-    Scheme also takes an optional `quoting` keyword,
-    by which Scheme's various quote, unquote, unquote-splicing characters
-    can be prepended to the formatted result:
+    ..  container:: example
 
-    ::
+        **Example 3.** A variable-length argument:
 
-        >>> scheme = schemetools.Scheme((1, 2, 3), quoting="'#")
-        >>> format(scheme)
-        "#'#(1 2 3)"
+        ::
 
-    Scheme can also force quotes around strings which contain no whitespace:
+            >>> scheme_1 = schemetools.Scheme(1, 2, 3)
+            >>> scheme_2 = schemetools.Scheme((1, 2, 3))
+            >>> format(scheme_1) == format(scheme_2)
+            True
 
-    ::
+        Scheme wraps nested variable-length arguments in a tuple.
 
-        >>> scheme = schemetools.Scheme('nospaces', force_quotes=True)
-        >>> print(format(scheme))
-        #"nospaces"
+    ..  container:: example
 
-    The above is useful in certain \override situations,
-    as LilyPond's Scheme interpreter
-    will treat unquoted strings as symbols rather than strings.
+        **Example 4.** A quoted Scheme expression:
 
-    Scheme is immutable.
+        ::
+
+            >>> scheme = schemetools.Scheme((1, 2, 3), quoting="'#")
+            >>> print(format(scheme))
+            #'#(1 2 3)
+
+        Use the `quoting` keyword to prepend Scheme's various quote, unquote, 
+        unquote-splicing characters to formatted output.
+
+    ..  container:: example
+
+        **Example 5.** A Scheme expression with forced quotes:
+
+        ::
+
+            >>> scheme = schemetools.Scheme('nospaces', force_quotes=True)
+            >>> print(format(scheme))
+            #"nospaces"
+
+        Use this in certain \override situations when LilyPond's Scheme
+        interpreter treats unquoted strings as symbols instead of strings.
+        The string must contain no whitespace for this to work.
+
+    ..  container:: example
+
+        **Example 6.** A Scheme expression of LilyPond functions:
+
+        ::
+
+            >>> function_1 = 'tuplet-number::append-note-wrapper'
+            >>> function_2 = 'tuplet-number::calc-denominator-text'
+            >>> string = schemetools.Scheme('4', force_quotes=True)
+            >>> scheme = schemetools.Scheme(
+            ...     function_1,
+            ...     function_2,
+            ...     string,
+            ...     )
+            >>> scheme
+            Scheme('tuplet-number::append-note-wrapper', 'tuplet-number::calc-denominator-text', Scheme('4', force_quotes=True))
+            >>> print(format(scheme))
+            #(tuplet-number::append-note-wrapper tuplet-number::calc-denominator-text "4")
+
+    ..  container:: example
+
+        **Example 7.** A Scheme lambda expression of LilyPond function that
+        takes a markup with a quoted string argument. Setting verbatim to true
+        causes the expression to format exactly as-is without modifying quotes
+        or whitespace:
+
+        ::
+
+            >>> string = '(lambda (grob) (grob-interpret-markup grob'
+            >>> string += r' #{ \markup \musicglyph #"noteheads.s0harmonic" #}))'
+            >>> scheme = schemetools.Scheme(string, verbatim=True)
+            >>> scheme
+            Scheme('(lambda (grob) (grob-interpret-markup grob #{ \\markup \\musicglyph #"noteheads.s0harmonic" #}))')
+            >>> print(format(scheme))
+            #(lambda (grob) (grob-interpret-markup grob #{ \markup \musicglyph #"noteheads.s0harmonic" #}))
+
+    Scheme objects are immutable.
     '''
 
     ### CLASS VARIABLES ###
@@ -61,6 +114,7 @@ class Scheme(AbjadObject):
         '_force_quotes',
         '_quoting',
         '_value',
+        '_verbatim',
         )
 
     ### INITIALIZER ###
@@ -73,25 +127,16 @@ class Scheme(AbjadObject):
                 args = args[0]
         quoting = kwargs.get('quoting')
         force_quotes = bool(kwargs.get('force_quotes'))
+        verbatim = kwargs.get('verbatim')
         assert isinstance(quoting, (str, type(None)))
         if quoting is not None:
             assert all(x in ("'", ',', '@', '`', '#') for x in quoting)
         self._force_quotes = force_quotes
         self._quoting = quoting
         self._value = args
+        self._verbatim = bool(verbatim)
 
     ### SPECIAL METHODS ###
-
-    def __eq__(self, expr):
-        r'''Is true when `expr` is a scheme object with a value equal to that
-        of this scheme object. Otherwise false.
-
-        Returns boolean.
-        '''
-        if type(self) == type(expr):
-            if self._value == expr._value:
-                return True
-        return False
 
     def __format__(self, format_specification=''):
         r'''Formats scheme.
@@ -99,18 +144,26 @@ class Scheme(AbjadObject):
         Set `format_specification` to `''`', `'lilypond'` or ``'storage'``.
         Interprets `''` equal to `'lilypond'`.
 
-        ::
+        ..  container:: example
 
-            >>> scheme = schemetools.Scheme('foo')
-            >>> format(scheme)
-            '#foo'
+            **Example 1.** Scheme LilyPond format:
 
-        ::
+            ::
 
-            >>> print(format(scheme, 'storage'))
-            schemetools.Scheme(
-                'foo'
-                )
+                >>> scheme = schemetools.Scheme('foo')
+                >>> format(scheme)
+                '#foo'
+
+        ..  container:: example
+
+            **Example 2.** Scheme storage format:
+
+            ::
+
+                >>> print(format(scheme, 'storage'))
+                schemetools.Scheme(
+                    'foo'
+                    )
 
         Returns string.
         '''
@@ -128,15 +181,6 @@ class Scheme(AbjadObject):
         '''
         return (self._value,)
 
-    def __hash__(self):
-        r'''Hashes scheme.
-
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
-
-        Returns integer.
-        '''
-        return super(Scheme, self).__hash__()
-
     def __str__(self):
         r'''String representation of scheme object.
 
@@ -152,7 +196,10 @@ class Scheme(AbjadObject):
     def _formatted_value(self):
         from abjad.tools import schemetools
         return schemetools.Scheme.format_scheme_value(
-            self._value, force_quotes=self.force_quotes)
+            self._value, 
+            force_quotes=self.force_quotes,
+            verbatim=self.verbatim,
+            )
 
     @property
     def _lilypond_format(self):
@@ -198,46 +245,68 @@ class Scheme(AbjadObject):
         return result
 
     @staticmethod
-    def format_scheme_value(value, force_quotes=False):
+    def format_scheme_value(value, force_quotes=False, verbatim=False):
         r'''Formats `value` as Scheme would.
 
-        ::
+        ..  container:: example
 
-            >>> schemetools.Scheme.format_scheme_value(1)
-            '1'
+            **Example 1.** Some basic values:
 
-        ::
+            ::
 
-            >>> schemetools.Scheme.format_scheme_value('foo')
-            'foo'
+                >>> schemetools.Scheme.format_scheme_value(1)
+                '1'
 
-        ::
+            ::
 
-            >>> schemetools.Scheme.format_scheme_value('bar baz')
-            '"bar baz"'
+                >>> schemetools.Scheme.format_scheme_value('foo')
+                'foo'
 
-        ::
+            ::
 
-            >>> schemetools.Scheme.format_scheme_value([1.5, True, False])
-            '(1.5 #t #f)'
+                >>> schemetools.Scheme.format_scheme_value('bar baz')
+                '"bar baz"'
 
-        Strings without whitespace can be forcibly quoted via the
-        `force_quotes` keyword:
+            ::
 
-        ::
+                >>> schemetools.Scheme.format_scheme_value([1.5, True, False])
+                '(1.5 #t #f)'
 
-            >>> schemetools.Scheme.format_scheme_value(
-            ...     'foo', force_quotes=True)
-            '"foo"'
+        ..  container:: example
+
+            **Example 2.** Strings without whitespace can be forcibly quoted
+            via the `force_quotes` keyword:
+
+            ::
+
+                >>> schemetools.Scheme.format_scheme_value(
+                ...     'foo',
+                ...     force_quotes=True,
+                ...     )
+                '"foo"'
+
+        ..  container:: example
+
+            **Example 3.** Set verbatim to true to format value exactly (with
+            only hash preprended):
+
+            ::
+
+                >>> string = '(lambda (grob) (grob-interpret-markup grob'
+                >>> string += r' #{ \markup \musicglyph #"noteheads.s0harmonic" #}))'
+                >>> schemetools.Scheme.format_scheme_value(string, verbatim=True)
+                '(lambda (grob) (grob-interpret-markup grob #{ \\markup \\musicglyph #"noteheads.s0harmonic" #}))'
 
         Returns string.
         '''
         from abjad.tools import schemetools
-        if isinstance(value, str):
+        if isinstance(value, str) and not verbatim:
             value = value.replace('"', r'\"')
             if -1 == value.find(' ') and not force_quotes:
                 return value
             return '"{}"'.format(value)
+        elif isinstance(value, str) and verbatim:
+            return value
         elif isinstance(value, bool):
             if value:
                 return '#t'
@@ -269,3 +338,16 @@ class Scheme(AbjadObject):
         Return string.
         '''
         return self._quoting
+
+    @property
+    def verbatim(self):
+        r'''Is true when formatting should format value absolutely verbatim.
+        Whitespace, quotes and all other parts of value are left in tact.
+
+        Defaults to false.
+
+        Set to true or false.
+
+        Returns true or false.
+        '''
+        return self._verbatim

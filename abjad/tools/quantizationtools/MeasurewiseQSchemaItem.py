@@ -24,7 +24,7 @@ class MeasurewiseQSchemaItem(QSchemaItem):
         >>> print(format(q_schema_item))
         quantizationtools.MeasurewiseQSchemaItem(
             tempo=indicatortools.Tempo(
-                duration=durationtools.Duration(1, 4), 
+                reference_duration=durationtools.Duration(1, 4), 
                 units_per_minute=60,
                 ),
             )
@@ -80,20 +80,6 @@ class MeasurewiseQSchemaItem(QSchemaItem):
         if use_full_measure is not None:
             use_full_measure = bool(use_full_measure)
         self._use_full_measure = use_full_measure
-
-    ### SPECIAL METHODS ###
-
-    def __getnewargs__(self):
-        r'''Gets new arguments.
-
-        Returns tuple.
-        '''
-        return (
-            self.search_tree,
-            self.tempo,
-            self.time_signature,
-            self.use_full_measure,
-            )
 
     ### PUBLIC PROPERTIES ###
 

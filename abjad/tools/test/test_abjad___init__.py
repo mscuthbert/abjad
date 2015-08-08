@@ -2,21 +2,39 @@
 import functools
 import inspect
 import pytest
-import abjad
+from abjad.tools import abjadbooktools
 from abjad.tools import datastructuretools
 from abjad.tools import documentationtools
 from abjad.tools import durationtools
 from abjad.tools import mathtools
 
 
-classes = documentationtools.list_all_abjad_classes()
+ignored_classes = (
+    abjadbooktools.AbjadDirective,
+    abjadbooktools.CodeBlock,
+    abjadbooktools.CodeOutputProxy,
+    abjadbooktools.DoctestDirective,
+    abjadbooktools.GraphvizOutputProxy,
+    abjadbooktools.ImportDirective,
+    abjadbooktools.LilyPondOutputProxy,
+    abjadbooktools.ShellDirective,
+    abjadbooktools.ThumbnailDirective,
+    datastructuretools.Enumeration,
+    )
+
+classes = documentationtools.list_all_abjad_classes(
+    ignored_classes=ignored_classes,
+    )
+
+
 @pytest.mark.parametrize('class_', classes)
 def test_abjad___init___01(class_):
     r'''All concrete classes initialize from empty input.
     '''
-
-    if not inspect.isabstract(class_):
-        instance = class_()
+    if inspect.isabstract(class_):
+        return
+    instance = class_()
+    assert instance is not None
 
 
 valid_types = (
@@ -32,12 +50,11 @@ valid_types = (
     mathtools.NegativeInfinity,
     )
 
-classes = documentationtools.list_all_abjad_classes()
+
 @pytest.mark.parametrize('obj', classes)
 def test_abjad___init___02(obj):
     r'''Make sure class initializer keyword argument values are immutable.
     '''
-
     for attr in inspect.classify_class_attrs(obj):
         if attr.defining_class is not obj:
             continue
@@ -59,6 +76,8 @@ def test_abjad___init___02(obj):
 
 
 functions = documentationtools.list_all_abjad_functions()
+
+
 @pytest.mark.parametrize('obj', functions)
 def test_abjad___init___03(obj):
     r'''Make sure function keyword argument values are immutable.

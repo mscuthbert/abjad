@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*-
+from abjad.tools import datastructuretools
 from abjad.tools import lilypondfiletools
 from abjad.tools.abctools import AbjadObject
 
@@ -11,29 +12,38 @@ class SegmentMaker(AbjadObject):
 
     __slots__ = (
         '_lilypond_file',
-        '_name',
+        '_previous_segment_metadata',
+        '_segment_metadata',
         )
 
     ### INITIALIZER ###
 
     def __init__(
         self,
-        name=None,
         ):
         self._lilypond_file = None
-        self._name = name
 
     ### SPECIAL METHODS ###
 
-    def __call__(self):
+    def __call__(
+        self, 
+        segment_metadata=None, 
+        previous_segment_metadata=None,
+        ):
         r'''Calls segment-maker.
 
         Returns LilyPond file.
         '''
+        segment_metadata = datastructuretools.TypedOrderedDict(
+            segment_metadata)
+        previous_segment_metadata = datastructuretools.TypedOrderedDict(
+            previous_segment_metadata)
+        self._segment_metadata = segment_metadata
+        self._previous_segment_metadata = previous_segment_metadata
         lilypond_file = self._make_lilypond_file()
         assert isinstance(lilypond_file, lilypondfiletools.LilyPondFile)
         self._lilypond_file = lilypond_file
-        return self._lilypond_file
+        return self._lilypond_file, self._segment_metadata
 
     def __eq__(self, expr):
         r'''Is true if `expr` is a segment-maker with equivalent properties.
@@ -48,12 +58,13 @@ class SegmentMaker(AbjadObject):
         hash_values = systemtools.StorageFormatManager.get_hash_values(self)
         return hash(hash_values)
 
-    def __illustrate__(self):
+    def __illustrate__(self, **kwargs):
         r'''Illustrates segment-maker.
 
         Returns LilyPond file.
         '''
-        return self()
+        lilypond_file, metadata = self(**kwargs)
+        return lilypond_file
 
     ### PUBLIC PROPERTIES ###
 
@@ -66,11 +77,3 @@ class SegmentMaker(AbjadObject):
         Returns LilyPond file.
         '''
         return self._lilypond_file
-
-    @property
-    def name(self):
-        r'''Gets segment name.
-
-        Returns string or none.
-        '''
-        return self._name

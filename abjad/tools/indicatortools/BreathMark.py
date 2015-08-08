@@ -1,13 +1,13 @@
 # -*- encoding: utf-8 -*-
-from abjad.tools.abctools.AbjadObject import AbjadObject
+from abjad.tools.abctools.AbjadValueObject import AbjadValueObject
 
 
-class BreathMark(AbjadObject):
+class BreathMark(AbjadValueObject):
     r'''A breath mark.
 
     ..  container:: example
 
-        BreathMark:
+        **Example 1.** Attached to a single note:
 
         ::
 
@@ -21,90 +21,51 @@ class BreathMark(AbjadObject):
             >>> print(format(note))
             c'4 \breathe
 
+    ..  container:: example
+
+        **Examle 2.** Attached to notes in a staff:
+
+        ::
+
+            >>> staff = Staff("c'8 d' e' f' g' a' b' c''")
+            >>> attach(Beam(), staff[:4])
+            >>> attach(Beam(), staff[4:])
+            >>> attach(indicatortools.BreathMark(), staff[3])
+            >>> attach(indicatortools.BreathMark(), staff[7])
+            >>> show(staff) # doctest: +SKIP
+
+        ..  doctest::
+
+            >>> print(format(staff))
+            \new Staff {
+                c'8 [
+                d'8
+                e'8
+                f'8 ]
+                \breathe
+                g'8 [
+                a'8
+                b'8
+                c''8 ]
+                \breathe
+            }
+
     '''
 
     ### CLASS VARIABLES ###
 
     __slots__ = (
+        '_default_scope',
         )
 
-    _format_slot = 'right'
+    _format_slot = 'after'
 
     ### INITIALIZER ###
 
     def __init__(self):
-        pass
+        self._default_scope = None
 
     ### SPECIAL METHODS ###
-
-    def __copy__(self, *args):
-        r'''Copies breath_mark.
-
-        ..  container:: example
-
-            ::
-
-                >>> import copy
-                >>> breath_mark_1 = indicatortools.BreathMark()
-                >>> breath_mark_2 = copy.copy(breath_mark_1)
-
-            ::
-
-                >>> str(breath_mark_1) == str(breath_mark_2)
-                True
-
-            ::
-
-                >>> breath_mark_1 == breath_mark_2
-                True
-
-            ::
-
-                >>> breath_mark_1 is breath_mark_2
-                False
-
-        Returns new breath_mark.
-        '''
-        return type(self)()
-
-    def __eq__(self, expr):
-        r'''Is true when `expr` is a breath_mark. Otherwise false.
-
-        ..  container:: example
-
-            ::
-
-                >>> breath_mark_1 = indicatortools.BreathMark()
-                >>> breath_mark_2 = indicatortools.BreathMark()
-
-            ::
-
-                >>> breath_mark_1 == breath_mark_1
-                True
-                >>> breath_mark_1 == breath_mark_2
-                True
-
-            ::
-
-                >>> breath_mark_2 == breath_mark_1
-                True
-                >>> breath_mark_2 == breath_mark_2
-                True
-
-        Returns boolean.
-        '''
-        if isinstance(expr, type(self)):
-            return True
-        return False
-
-    def __hash__(self):
-        r'''Hashes breath mark.
-
-        Required to be explicitly redefined on Python 3 if __eq__ changes.
-
-        Returns integer.
-        '''
-        return super(BreathMark, self).__hash__()
 
     def __str__(self):
         r'''Gets string representation of breath mark.
@@ -120,6 +81,14 @@ class BreathMark(AbjadObject):
         '''
         return r'\breathe'
 
+    ### PRIVATE METHODS ###
+
+    def _get_lilypond_format_bundle(self, component=None):
+        from abjad.tools import systemtools
+        lilypond_format_bundle = systemtools.LilyPondFormatBundle()
+        lilypond_format_bundle.after.commands.append(str(self))
+        return lilypond_format_bundle
+
     ### PRIVATE PROPERTIES ###
 
     @property
@@ -130,9 +99,20 @@ class BreathMark(AbjadObject):
     def _lilypond_format(self):
         return str(self)
 
+    ### PUBLIC PROPERTIES ###
+
     @property
-    def _lilypond_format_bundle(self):
-        from abjad.tools import systemtools
-        lilypond_format_bundle = systemtools.LilyPondFormatBundle()
-        lilypond_format_bundle.right.articulations.append(str(self))
-        return lilypond_format_bundle
+    def default_scope(self):
+        r'''Gets default scope of breath mark.
+
+        ..  container:: example
+
+            ::
+
+                >>> breath_mark = indicatortools.BreathMark()
+                >>> breath_mark.default_scope is None
+                True
+
+        Returns none.
+        '''
+        return self._default_scope

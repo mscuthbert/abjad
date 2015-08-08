@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 from abjad.tools import sequencetools
+from abjad.tools import datastructuretools
 from abjad.tools import selectiontools
 from abjad.tools.abctools import AbjadValueObject
 
@@ -12,11 +13,14 @@ class CountsSelectorCallback(AbjadValueObject):
         >>> callback = selectortools.CountsSelectorCallback([3])
         >>> print(format(callback))
         selectortools.CountsSelectorCallback(
-            counts=(3,),
-            cyclic=False,
+            counts=datastructuretools.CyclicTuple(
+                [3]
+                ),
+            cyclic=True,
             fuse_overhang=False,
-            overhang=False,
-            rotate=False,
+            nonempty=False,
+            overhang=True,
+            rotate=True,
             )
 
     '''
@@ -29,6 +33,7 @@ class CountsSelectorCallback(AbjadValueObject):
         '_fuse_overhang',
         '_overhang',
         '_rotate',
+        '_nonempty',
         )
 
     ### INITIALIZER ###
@@ -36,37 +41,39 @@ class CountsSelectorCallback(AbjadValueObject):
     def __init__(
         self,
         counts=(3,),
-        cyclic=False,
+        cyclic=True,
         fuse_overhang=False,
-        overhang=False,
-        rotate=False,
+        nonempty=False,
+        overhang=True,
+        rotate=True,
         ):
-        counts = tuple(int(_) for _ in counts)
+        counts = datastructuretools.CyclicTuple(int(_) for _ in counts)
         self._counts = counts
         self._cyclic = bool(cyclic)
         self._fuse_overhang = bool(fuse_overhang)
         self._overhang = bool(overhang)
         self._rotate = bool(rotate)
+        self._nonempty = bool(nonempty)
 
     ### SPECIAL METHODS ###
 
-    def __call__(self, expr, seed=None):
+    def __call__(self, expr, rotation=None):
         r'''Iterates tuple `expr`.
 
         Returns tuple in which each item is a selection or component.
         '''
         assert isinstance(expr, tuple), repr(tuple)
-        if seed is None:
-            seed = 0
-        seed = int(seed)
+        if rotation is None:
+            rotation = 0
+        rotation = int(rotation)
         result = []
-        for i, subexpr in enumerate(expr, seed):
-            counts = self.counts
-            if self.rotate:
-                counts = sequencetools.rotate_sequence(i)
+        counts = self.counts
+        if self.rotate:
+            counts = sequencetools.rotate_sequence(counts, -rotation)
+        for subexpr in expr:
             groups = sequencetools.partition_sequence_by_counts(
                 subexpr,
-                counts,
+                [abs(_) for _ in counts],
                 cyclic=self.cyclic,
                 overhang=self.overhang,
                 )
@@ -75,9 +82,19 @@ class CountsSelectorCallback(AbjadValueObject):
                 if len(groups[-1]) != last_count:
                     last_group = groups.pop()
                     groups[-1] += last_group
-            for group in groups:
+            subresult = []
+            for i, group in enumerate(groups):
+                count = counts[i]
+                if count < 0:
+                    continue
                 items = selectiontools.Selection(group)
-                result.append(items)
+                subresult.append(items)
+            if self.nonempty and not subresult:
+                group = selectiontools.Selection(groups[0])
+                subresult.append(group)
+            result.extend(subresult)
+            if self.rotate:
+                counts = sequencetools.rotate_sequence(counts, -1)
         return tuple(result)
 
     ### PUBLIC PROPERTIES ###
@@ -105,6 +122,14 @@ class CountsSelectorCallback(AbjadValueObject):
         Returns ordinal constant.
         '''
         return self._fuse_overhang
+
+    @property
+    def nonempty(self):
+        r'''Gets counts selector callback nonempty flag.
+
+        Returns boolean.
+        '''
+        return self._nonempty
 
     @property
     def overhang(self):

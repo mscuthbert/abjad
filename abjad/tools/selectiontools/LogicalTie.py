@@ -3,7 +3,6 @@ import itertools
 from abjad.tools import durationtools
 from abjad.tools import mathtools
 from abjad.tools.topleveltools import attach
-from abjad.tools.topleveltools import detach
 from abjad.tools.topleveltools import mutate
 from abjad.tools.selectiontools.ContiguousSelection import ContiguousSelection
 
@@ -27,17 +26,14 @@ class LogicalTie(ContiguousSelection):
 
     ### CLASS VARIABLES ###
 
-    __slots__ = (
-        ) 
+    __slots__ = () 
 
     ### PRIVATE METHODS ###
 
     def _add_or_remove_notes_to_achieve_written_duration(
         self, new_written_duration):
         from abjad.tools import scoretools
-        from abjad.tools import scoretools
         from abjad.tools import spannertools
-        from abjad.tools import scoretools
         new_written_duration = durationtools.Duration(new_written_duration)
         if new_written_duration.is_assignable:
             self[0].written_duration = new_written_duration
@@ -92,7 +88,6 @@ class LogicalTie(ContiguousSelection):
         return self[0]._get_logical_tie()
 
     def _fuse_leaves_by_immediate_parent(self):
-        from abjad.tools import scoretools
         result = []
         parts = self.leaves_grouped_by_immediate_parents
         for part in parts:
@@ -130,7 +125,6 @@ class LogicalTie(ContiguousSelection):
 
         Returns boolean.
         '''
-        from abjad.tools import scoretools
         from abjad.tools import scoretools
         return isinstance(self.head, (scoretools.Note, scoretools.Chord))
 
@@ -329,12 +323,9 @@ class LogicalTie(ContiguousSelection):
 
         Returns tuplet.
         '''
-        from abjad.tools import scoretools
         from abjad.tools import mathtools
-        from abjad.tools import agenttools
         from abjad.tools import scoretools
         from abjad.tools import spannertools
-        from abjad.tools import scoretools
 
         # coerce input
         proportions = mathtools.Ratio(proportions)
@@ -343,7 +334,7 @@ class LogicalTie(ContiguousSelection):
         target_duration = self._preprolated_duration
 
         # find duration of each note in tuplet
-        prolated_duration = target_duration / sum(proportions)
+        prolated_duration = target_duration / sum(proportions.numbers)
 
         # find written duration of each notes in tuplet
         if is_diminution:
@@ -362,15 +353,19 @@ class LogicalTie(ContiguousSelection):
                     prolated_duration.equal_or_lesser_power_of_two
 
         # find written duration of each note in tuplet
-        written_durations = [x * basic_written_duration for x in proportions]
+        written_durations = [
+            _ * basic_written_duration for _ in proportions.numbers
+            ]
 
         # make tuplet notes
         try:
             notes = [scoretools.Note(0, x) for x in written_durations]
         except AssignabilityError:
             denominator = target_duration._denominator
-            note_durations = [durationtools.Duration(x, denominator)
-                for x in proportions]
+            note_durations = [
+                durationtools.Duration(_, denominator)
+                for _ in proportions.numbers
+                ]
             notes = scoretools.make_notes(0, note_durations)
 
         # make tuplet

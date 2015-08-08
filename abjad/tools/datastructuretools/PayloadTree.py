@@ -267,7 +267,7 @@ class PayloadTree(AbjadObject):
         '''
         return vars(self)
 
-    def __graph__(self):
+    def __graph__(self, **kwargs):
         r'''The GraphvizGraph representation of payload tree.
 
         ::
@@ -277,9 +277,11 @@ class PayloadTree(AbjadObject):
 
         ::
 
-            >>> graph = tree.__graph__()
-            >>> print(str(graph))
+            >>> tree_graph = tree.__graph__()
+            >>> print(str(tree_graph))
             digraph G {
+                graph [bgcolor=transparent,
+                    truecolor=true];
                 node_0 [label="",
                     shape=circle];
                 node_1 [label="",
@@ -307,27 +309,33 @@ class PayloadTree(AbjadObject):
                 node_12 [label=7,
                     shape=box];
                 node_0 -> node_1;
-                node_0 -> node_10;
                 node_0 -> node_4;
                 node_0 -> node_7;
+                node_0 -> node_10;
                 node_1 -> node_2;
                 node_1 -> node_3;
-                node_10 -> node_11;
-                node_10 -> node_12;
                 node_4 -> node_5;
                 node_4 -> node_6;
                 node_7 -> node_8;
                 node_7 -> node_9;
+                node_10 -> node_11;
+                node_10 -> node_12;
             }
 
         ::
 
-            >>> topleveltools.graph(graph) # doctest: +SKIP
+            >>> graph(tree) # doctest: +SKIP
 
         Returns graphviz graph.
         '''
         from abjad.tools import documentationtools
-        graph = documentationtools.GraphvizGraph(name='G')
+        graph = documentationtools.GraphvizGraph(
+            attributes={
+                'bgcolor': 'transparent',
+                'truecolor': True,
+                },
+            name='G',
+            )
         node_mapping = {}
         for node in self.iterate_depth_first():
             graphviz_node = documentationtools.GraphvizNode()
@@ -349,7 +357,7 @@ class PayloadTree(AbjadObject):
     def __hash__(self):
         r'''Hashes payload tree.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''

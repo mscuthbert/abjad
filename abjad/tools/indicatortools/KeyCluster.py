@@ -1,13 +1,14 @@
 # -*- encoding: utf-8 -*-
-from abjad.tools.abctools.AbjadObject import AbjadObject
+from abjad.tools.abctools.AbjadValueObject import AbjadValueObject
 
 
-class KeyCluster(AbjadObject):
-    r'''A key cluster indication.
+class KeyCluster(AbjadValueObject):
+    r'''A key cluster indicator.
 
     ..  container:: example
 
-        Initializes key cluster with default values:
+        
+        **Example 1.** Default values:
 
         ::
 
@@ -41,6 +42,7 @@ class KeyCluster(AbjadObject):
     ### CLASS VARIABLES ###
 
     __slots__ = (
+        '_default_scope',
         '_include_black_keys',
         '_include_white_keys',
         '_markup_direction',
@@ -56,6 +58,7 @@ class KeyCluster(AbjadObject):
         markup_direction=Up,
         suppress_markup=False,
         ):
+        self._default_scope = None
         assert include_black_keys or include_white_keys
         self._include_black_keys = bool(include_black_keys)
         self._include_white_keys = bool(include_white_keys)
@@ -63,35 +66,9 @@ class KeyCluster(AbjadObject):
         self._markup_direction = markup_direction
         self._suppress_markup = bool(suppress_markup)
 
-    ### SPECIAL METHODS ###
+    ### PRIVATE METHODS ###
 
-    def __eq__(self, expr):
-        r'''Is true when `expr` is a key cluster indication with black-key and
-        white-key inclusion equal to that of this key cluster indication.
-        Otherwise false.
-
-        Returns boolean.
-        '''
-        if isinstance(expr, type(self)):
-            if expr.include_black_keys == self.include_black_keys:
-                if expr.include_white_keys == self.include_white_keys:
-                    if expr.suppress_markup == self.suppress_markup:
-                        return True
-        return False
-
-    def __hash__(self):
-        r'''Hashes key cluster.
-
-        Required to be explicitly re-defined on Python 3 if __eq__ changes.
-
-        Returns integer.
-        '''
-        return super(KeyCluster, self).__hash__()
-
-    ### PRIVATE PROPERTIES ###
-
-    @property
-    def _lilypond_format_bundle(self):
+    def _get_lilypond_format_bundle(self, component=None):
         from abjad.tools import markuptools
         from abjad.tools import systemtools
         lilypond_format_bundle = systemtools.LilyPondFormatBundle()
@@ -120,6 +97,22 @@ class KeyCluster(AbjadObject):
         return lilypond_format_bundle
 
     ### PUBLIC PROPERTIES ###
+
+    @property
+    def default_scope(self):
+        r'''Gest default scope of key cluster indicator.
+
+        ..  container:: example
+
+            ::
+
+                >>> key_cluster = indicatortools.KeyCluster()
+                >>> key_cluster.default_scope is None
+                True
+
+        Returns none.
+        '''
+        return self._default_scope
 
     @property
     def include_black_keys(self):

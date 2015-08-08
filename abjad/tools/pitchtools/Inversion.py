@@ -1,9 +1,8 @@
 # -*- encoding: utf-8 -*-
-import numbers
-from abjad.tools.abctools.AbjadObject import AbjadObject
+from abjad.tools.abctools.AbjadValueObject import AbjadValueObject
 
 
-class Inversion(AbjadObject):
+class Inversion(AbjadValueObject):
     r'''Inversion operator.
 
     ..  container:: example
@@ -23,7 +22,16 @@ class Inversion(AbjadObject):
     ### CLASS VARIABLES ##
 
     __slots__ = (
+        '_axis',
         )
+
+    ### INITIALIZER ###
+
+    def __init__(self, axis=None):
+        from abjad.tools import pitchtools
+        if axis is not None:
+            axis = pitchtools.NamedPitch(axis)
+        self._axis = axis
 
     ### SPECIAL METHODS ###
 
@@ -36,9 +44,9 @@ class Inversion(AbjadObject):
 
             ::
 
-                >>> operator_ = pitchtools.Inversion() 
-                >>> pc = pitchtools.NumberedPitchClass(1)
-                >>> operator_(pc)
+                >>> operator_ = pitchtools.Inversion()
+                >>> expr = pitchtools.NumberedPitchClass(1)
+                >>> operator_(expr)
                 NumberedPitchClass(11)
 
         ..  container:: example
@@ -47,19 +55,82 @@ class Inversion(AbjadObject):
 
             ::
 
-                >>> operator_ = pitchtools.Inversion() 
-                >>> pc = pitchtools.NumberedPitch(15)
-                >>> operator_(pc)
+                >>> operator_ = pitchtools.Inversion()
+                >>> expr = pitchtools.NumberedPitch(15)
+                >>> operator_(expr)
                 NumberedPitch(-15)
 
-        ..  todo:: Implement named pitch-class inversion.
+        ..  container:: example
+
+            **Example 3.** Inverts named pitch:
+
+            ::
+
+                >>> operator_ = pitchtools.Inversion()
+                >>> expr = pitchtools.NamedPitch("d'")
+                >>> operator_(expr)
+                NamedPitch('bf')
+
+        ..  container:: example
+
+            **Example 4.** Inverts named pitch class:
+
+            ::
+
+                >>> operator_ = pitchtools.Inversion()
+                >>> expr = pitchtools.NamedPitchClass('d')
+                >>> operator_(expr)
+                NamedPitchClass('bf')
+
+        ..  container:: example
+
+            **Example 5.** Inverts pitch segment:
+
+            ::
+
+                >>> operator_ = pitchtools.Inversion()
+                >>> expr = pitchtools.PitchSegment("c' d' e'")
+                >>> operator_(expr)
+                PitchSegment(["c'", 'bf', 'af'])
+
+        ..  container:: example
+
+            **Example 6.** Inverts pitch class segment:
+
+            ::
+
+                >>> operator_ = pitchtools.Inversion()
+                >>> expr = pitchtools.PitchClassSegment("c d e")
+                >>> operator_(expr)
+                PitchClassSegment(['c', 'bf', 'af'])
+
+        ..  container:: example
+        
+            **Example 7.** Inverts pitch class set:
+
+            ::
+
+                >>> operator_ = pitchtools.Inversion()
+                >>> expr = pitchtools.PitchClassSet("c d e")
+                >>> operator_(expr)
+                PitchClassSet(['c', 'af', 'bf'])
 
         Returns new object with type equal to that of `expr`.
         '''
         if hasattr(expr, 'invert'):
-            result = expr.invert()
+            result = expr.invert(axis=self.axis)
         else:
             message = 'do not know how to invert: {!r}.'
             message = message.format(expr)
             raise TypeError(message)
         return result
+
+    ### PUBLIC PROPERTIES ###
+
+    @property
+    def axis(self):
+        r'''Gets axis of inversion.
+
+        Returns named pitch or none.
+        '''
+        return self._axis

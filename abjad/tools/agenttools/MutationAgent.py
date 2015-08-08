@@ -10,6 +10,8 @@ class MutationAgent(abctools.AbjadObject):
 
     ..  container:: example
 
+        **Example 1.** Creates mutation agent for last two notes in staff:
+
         ::
 
             >>> staff = Staff("c'4 e'4 d'4 f'4")
@@ -47,6 +49,8 @@ class MutationAgent(abctools.AbjadObject):
 
     def copy(self, n=1, include_enclosing_containers=False):
         r'''Copies component and fractures crossing spanners.
+
+        ..  todo:: Add examples.
 
         Returns new component.
         '''
@@ -421,6 +425,8 @@ class MutationAgent(abctools.AbjadObject):
 
         ..  container:: example
 
+            **Example 1.** Replaces skip-filled measures with notes:
+
             ::
 
                 >>> pairs = [(1, 8), (3, 16)]
@@ -533,39 +539,43 @@ class MutationAgent(abctools.AbjadObject):
     def respell_with_flats(self):
         r'''Respell named pitches in mutation client with flats:
 
-        ::
+        ..  container:: example
 
-            >>> staff = Staff("c'8 cs'8 d'8 ef'8 e'8 f'8")
-            >>> show(staff) # doctest: +SKIP
+            **Example 1.** Respells notes in staff:
 
-        ..  doctest::
+            ::
 
-            >>> print(format(staff))
-            \new Staff {
-                c'8
-                cs'8
-                d'8
-                ef'8
-                e'8
-                f'8
-            }
+                >>> staff = Staff("c'8 cs'8 d'8 ef'8 e'8 f'8")
+                >>> show(staff) # doctest: +SKIP
 
-        ::
+            ..  doctest::
 
-            >>> mutate(staff).respell_with_flats()
-            >>> show(staff) # doctest: +SKIP
+                >>> print(format(staff))
+                \new Staff {
+                    c'8
+                    cs'8
+                    d'8
+                    ef'8
+                    e'8
+                    f'8
+                }
 
-        ..  doctest::
+            ::
 
-            >>> print(format(staff))
-            \new Staff {
-                c'8
-                df'8
-                d'8
-                ef'8
-                e'8
-                f'8
-            }
+                >>> mutate(staff).respell_with_flats()
+                >>> show(staff) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(staff))
+                \new Staff {
+                    c'8
+                    df'8
+                    d'8
+                    ef'8
+                    e'8
+                    f'8
+                }
 
         Returns none.
         '''
@@ -581,39 +591,43 @@ class MutationAgent(abctools.AbjadObject):
     def respell_with_sharps(self):
         r'''Respell named pitches in mutation client with sharps:
 
-        ::
+        ..  container:: example
 
-            >>> staff = Staff("c'8 cs'8 d'8 ef'8 e'8 f'8")
-            >>> show(staff) # doctest: +SKIP
+            **Example 1.** Respells notes in staff:
 
-        ..  doctest::
+            ::
 
-            >>> print(format(staff))
-            \new Staff {
-                c'8
-                cs'8
-                d'8
-                ef'8
-                e'8
-                f'8
-            }
+                >>> staff = Staff("c'8 cs'8 d'8 ef'8 e'8 f'8")
+                >>> show(staff) # doctest: +SKIP
 
-        ::
+            ..  doctest::
 
-            >>> mutate(staff).respell_with_sharps()
-            >>> show(staff) # doctest: +SKIP
+                >>> print(format(staff))
+                \new Staff {
+                    c'8
+                    cs'8
+                    d'8
+                    ef'8
+                    e'8
+                    f'8
+                }
 
-        ..  doctest::
+            ::
 
-            >>> print(format(staff))
-            \new Staff {
-                c'8
-                cs'8
-                d'8
-                ds'8
-                e'8
-                f'8
-            }
+                >>> mutate(staff).respell_with_sharps()
+                >>> show(staff) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(staff))
+                \new Staff {
+                    c'8
+                    cs'8
+                    d'8
+                    ds'8
+                    e'8
+                    f'8
+                }
 
         Returns none.
         '''
@@ -632,6 +646,8 @@ class MutationAgent(abctools.AbjadObject):
         boundary_depth=None,
         initial_offset=None,
         maximum_dot_count=None,
+        rewrite_tuplets=True,
+        use_messiaen_style_ties=False,
         ):
         r'''Rewrite the contents of logical ties in an expression to match
         a meter.
@@ -647,6 +663,7 @@ class MutationAgent(abctools.AbjadObject):
                 >>> parseable += "| 4/4 c'32 d'2.. ~ d'16 e'32 ~ |"
                 >>> parseable += "| 2/4 e'2 |"
                 >>> staff = Staff(parseable)
+                >>> show(staff) # doctest: +SKIP
 
             ..  doctest::
 
@@ -671,10 +688,6 @@ class MutationAgent(abctools.AbjadObject):
 
             ::
 
-                >>> show(staff) # doctest: +SKIP
-
-            ::
-
                 >>> meter = metertools.Meter((4, 4))
                 >>> print(meter.pretty_rtm_format)
                 (4/4 (
@@ -686,6 +699,7 @@ class MutationAgent(abctools.AbjadObject):
             ::
 
                 >>> mutate(staff[1][:]).rewrite_meter(meter)
+                >>> show(staff) # doctest: +SKIP
 
             ..  doctest::
 
@@ -709,10 +723,6 @@ class MutationAgent(abctools.AbjadObject):
                     }
                 }
 
-            ::
-
-                >>> show(staff) # doctest: +SKIP
-
         ..  container:: example
 
             **Example 2.** Rewrite the contents of a measure in a staff
@@ -721,6 +731,7 @@ class MutationAgent(abctools.AbjadObject):
             ::
 
                 >>> staff = Staff(parseable)
+                >>> show(staff) # doctest: +SKIP
 
             ..  doctest::
 
@@ -745,10 +756,6 @@ class MutationAgent(abctools.AbjadObject):
 
             ::
 
-                >>> show(staff) # doctest: +SKIP
-
-            ::
-
                 >>> rtm = '(4/4 ((2/4 (1/4 1/4)) (2/4 (1/4 1/4))))'
                 >>> meter = metertools.Meter(rtm)
                 >>> print(meter.pretty_rtm_format) # doctest: +SKIP
@@ -763,6 +770,7 @@ class MutationAgent(abctools.AbjadObject):
             ::
 
                 >>> mutate(staff[1][:]).rewrite_meter(meter)
+                >>> show(staff) # doctest: +SKIP
 
             ..  doctest::
 
@@ -785,10 +793,6 @@ class MutationAgent(abctools.AbjadObject):
                     }
                 }
 
-            ::
-
-                >>> show(staff) # doctest: +SKIP
-
         ..  container:: example
 
             **Example 3.** Limit the maximum number of dots per leaf using
@@ -798,6 +802,7 @@ class MutationAgent(abctools.AbjadObject):
 
                 >>> parseable = "abj: | 3/4 c'32 d'8 e'8 fs'4... |"
                 >>> measure = parse(parseable)
+                >>> show(measure) # doctest: +SKIP
 
             ..  doctest::
 
@@ -810,15 +815,12 @@ class MutationAgent(abctools.AbjadObject):
                     fs'4...
                 }
 
-            ::
-
-                >>> show(measure) # doctest: +SKIP
-
             Without constraining the `maximum_dot_count`:
 
             ::
 
                 >>> mutate(measure[:]).rewrite_meter(measure)
+                >>> show(measure) # doctest: +SKIP
 
             ..  doctest::
 
@@ -833,10 +835,6 @@ class MutationAgent(abctools.AbjadObject):
                     fs'4...
                 }
 
-            ::
-
-                >>> show(measure) # doctest: +SKIP
-
             Constraining the `maximum_dot_count` to `2`:
 
             ::
@@ -846,6 +844,7 @@ class MutationAgent(abctools.AbjadObject):
                 ...     measure,
                 ...     maximum_dot_count=2,
                 ...     )
+                >>> show(measure) # doctest: +SKIP
 
             ..  doctest::
 
@@ -861,10 +860,6 @@ class MutationAgent(abctools.AbjadObject):
                     fs'4
                 }
 
-            ::
-
-                >>> show(measure) # doctest: +SKIP
-
             Constraining the `maximum_dot_count` to `1`:
 
             ::
@@ -874,6 +869,7 @@ class MutationAgent(abctools.AbjadObject):
                 ...     measure,
                 ...     maximum_dot_count=1,
                 ...     )
+                >>> show(measure) # doctest: +SKIP
 
             ..  doctest::
 
@@ -890,10 +886,6 @@ class MutationAgent(abctools.AbjadObject):
                     fs'4
                 }
 
-            ::
-
-                >>> show(measure) # doctest: +SKIP
-
             Constraining the `maximum_dot_count` to `0`:
 
             ::
@@ -903,6 +895,7 @@ class MutationAgent(abctools.AbjadObject):
                 ...     measure,
                 ...     maximum_dot_count=0,
                 ...     )
+                >>> show(measure) # doctest: +SKIP
 
             ..  doctest::
 
@@ -921,10 +914,6 @@ class MutationAgent(abctools.AbjadObject):
                     fs'8 ~
                     fs'4
                 }
-
-            ::
-
-                >>> show(measure) # doctest: +SKIP
 
         ..  container:: example
 
@@ -959,6 +948,7 @@ class MutationAgent(abctools.AbjadObject):
 
                 >>> parseable = "abj: | 9/8 c'2 d'2 e'8 |"
                 >>> measure = parse(parseable)
+                >>> show(measure) # doctest: +SKIP
 
             ..  doctest::
 
@@ -972,11 +962,8 @@ class MutationAgent(abctools.AbjadObject):
 
             ::
 
-                >>> show(measure) # doctest: +SKIP
-
-            ::
-
                 >>> mutate(measure[:]).rewrite_meter(measure)
+                >>> show(measure) # doctest: +SKIP
 
             ..  doctest::
 
@@ -988,10 +975,6 @@ class MutationAgent(abctools.AbjadObject):
                     d'4
                     e'8
                 }
-
-            ::
-
-                >>> show(measure) # doctest: +SKIP
 
             With a `boundary_depth` of `1`, logical ties which cross any offsets
             created by nodes with a depth of `1` in this Meter's rhythm
@@ -1005,6 +988,7 @@ class MutationAgent(abctools.AbjadObject):
                 ...     measure,
                 ...     boundary_depth=1,
                 ...     )
+                >>> show(measure) # doctest: +SKIP
 
             ..  doctest::
 
@@ -1018,10 +1002,6 @@ class MutationAgent(abctools.AbjadObject):
                     e'8
                 }
 
-            ::
-
-                >>> show(measure) # doctest: +SKIP
-
             For this `9/8` meter, and this input notation, A `boundary_depth`
             of `2` causes no change, as all logical ties already align to
             multiples of `1/8`:
@@ -1033,6 +1013,7 @@ class MutationAgent(abctools.AbjadObject):
                 ...     measure,
                 ...     boundary_depth=2,
                 ...     )
+                >>> show(measure) # doctest: +SKIP
 
             ..  doctest::
 
@@ -1044,10 +1025,6 @@ class MutationAgent(abctools.AbjadObject):
                     d'4
                     e'8
                 }
-
-            ::
-
-                >>> show(measure) # doctest: +SKIP
 
         ..  container:: example
 
@@ -1076,6 +1053,7 @@ class MutationAgent(abctools.AbjadObject):
                 >>> score.remove_commands.extend(engravers)
                 >>> score[0].consists_commands.extend(engravers)
                 >>> score[1].consists_commands.extend(engravers)
+                >>> show(score) # doctest: +SKIP
 
             ..  doctest::
 
@@ -1145,17 +1123,15 @@ class MutationAgent(abctools.AbjadObject):
                     }
                 >>
 
-            ::
-
-                >>> show(score) # doctest: +SKIP
-
-            Here we establish a meter without specifying and boundary
+            Here we establish a meter without specifying any boundary
             depth:
 
             ::
 
                 >>> for measure in iterate(score).by_class(scoretools.Measure):
                 ...     mutate(measure[:]).rewrite_meter(measure)
+                ...
+                >>> show(score) # doctest: +SKIP
 
             ..  doctest::
 
@@ -1224,10 +1200,6 @@ class MutationAgent(abctools.AbjadObject):
                         }
                     }
                 >>
-
-            ::
-
-                >>> show(score) # doctest: +SKIP
 
             Here we re-establish meter at a boundary depth of `1`:
 
@@ -1239,6 +1211,7 @@ class MutationAgent(abctools.AbjadObject):
                 ...         boundary_depth=1,
                 ...         )
                 ...
+                >>> show(score) # doctest: +SKIP
 
             ..  doctest::
 
@@ -1311,10 +1284,6 @@ class MutationAgent(abctools.AbjadObject):
                         }
                     }
                 >>
-
-            ::
-
-                >>> show(score) # doctest: +SKIP
 
             Note that the two time signatures are much more clearly
             disambiguated above.
@@ -1330,6 +1299,7 @@ class MutationAgent(abctools.AbjadObject):
                 >>> parseable += "2/3 { d'8. ~ 3/5 { d'16 e'8. f'16 ~ } } "
                 >>> parseable += "f'4 |"
                 >>> measure = parse(parseable)
+                >>> show(measure) # doctest: +SKIP
 
             ..  doctest::
 
@@ -1351,10 +1321,6 @@ class MutationAgent(abctools.AbjadObject):
                     f'4
                 }
 
-            ::
-
-                >>> show(measure) # doctest: +SKIP
-
             When establishing a meter on a selection of components
             which contain containers, like `Tuplets` or `Containers`,
             `metertools.rewrite_meter()` will recurse into
@@ -1368,6 +1334,7 @@ class MutationAgent(abctools.AbjadObject):
                 ...     measure,
                 ...     boundary_depth=1,
                 ...     )
+                >>> show(measure) # doctest: +SKIP
 
             ..  doctest::
 
@@ -1383,29 +1350,284 @@ class MutationAgent(abctools.AbjadObject):
                         \tweak #'text #tuplet-number::calc-fraction-text
                         \times 3/5 {
                             d'16
-                            e'8.
+                            e'8 ~
+                            e'16
                             f'16 ~
                         }
                     }
                     f'4
                 }
 
+        ..  container:: example
+
+            **Example 7a.** Default rewrite behavior doesn't subdivide the
+            first note in this measure because the first note in the measure
+            starts at the beginning of a level-0 beat in meter:
+
             ::
 
+                >>> measure = Measure((6, 8), "c'4.. c'16 ~ c'4")
+                >>> meter = metertools.Meter((6, 8))
+                >>> mutate(measure[:]).rewrite_meter(meter)
                 >>> show(measure) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(measure))
+                {
+                    \time 6/8
+                    c'4..
+                    c'16 ~
+                    c'4
+                }
+
+            **Example 7b.** Setting boundary depth to 1 subdivides the first
+            note in this measure:
+
+            ::
+
+                >>> measure = Measure((6, 8), "c'4.. c'16 ~ c'4")
+                >>> meter = metertools.Meter((6, 8))
+                >>> mutate(measure[:]).rewrite_meter(meter, boundary_depth=1)
+                >>> show(measure) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(measure))
+                {
+                    \time 6/8
+                    c'4. ~
+                    c'16
+                    c'16 ~
+                    c'4
+                }
+
+            **Example 7c.** Another way of doing this is by setting preferred
+            boundary depth on the meter itself:
+
+            ::
+
+                >>> measure = Measure((6, 8), "c'4.. c'16 ~ c'4")
+                >>> meter = metertools.Meter(
+                ...     (6, 8),
+                ...     preferred_boundary_depth=1,
+                ...     )
+                >>> mutate(measure[:]).rewrite_meter(meter)
+                >>> show(measure) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(measure))
+                {
+                    \time 6/8
+                    c'4. ~
+                    c'16
+                    c'16 ~
+                    c'4
+                }
+
+            This makes it possible to divide different meters in different
+            ways.
+
+        ..  container:: example
+
+            **Example 8.** Uses Messiaen-style ties:
+
+            ::
+
+                >>> measure = Measure((4, 4), "c'4. c'4. c'4")
+                >>> show(measure) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(measure))
+                {
+                    \time 4/4
+                    c'4.
+                    c'4.
+                    c'4
+                }
+
+            ::
+
+                >>> meter = metertools.Meter((4, 4))
+                >>> mutate(measure[:]).rewrite_meter(
+                ...     meter,
+                ...     boundary_depth=1,
+                ...     use_messiaen_style_ties=True,
+                ...     )
+                >>> show(measure) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(measure))
+                {
+                    \time 4/4
+                    c'4
+                    c'8 \repeatTie
+                    c'8
+                    c'4 \repeatTie
+                    c'4
+                }
+
+        ..  container:: example
+
+            **Example 9a.** Rewrites notes and tuplets:
+
+            ::
+
+                >>> measure = Measure((6, 4), [
+                ...     Note("c'4."),
+                ...     Tuplet((6, 7), "c'4. r16"),
+                ...     Tuplet((6, 7), "r16 c'4."),
+                ...     Note("c'4."),
+                ...     ])
+                >>> string = r"c'8 ~ c'8 ~ c'8 \times 6/7 { c'4. r16 }"
+                >>> string += r" \times 6/7 { r16 c'4. } c'8 ~ c'8 ~ c'8"
+                >>> measure = Measure((6, 4), string)
+                >>> show(measure) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(measure))
+                {
+                    \time 6/4
+                    c'8 ~
+                    c'8 ~
+                    c'8
+                    \tweak #'text #tuplet-number::calc-fraction-text
+                    \times 6/7 {
+                        c'4.
+                        r16
+                    }
+                    \tweak #'text #tuplet-number::calc-fraction-text
+                    \times 6/7 {
+                        r16
+                        c'4.
+                    }
+                    c'8 ~
+                    c'8 ~
+                    c'8
+                }
+
+            ::
+
+                >>> meter = metertools.Meter((6, 4))
+                >>> mutate(measure[:]).rewrite_meter(
+                ...     meter,
+                ...     boundary_depth=1,
+                ...     )
+                >>> show(measure) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(measure))
+                {
+                    \time 6/4
+                    c'4.
+                    \tweak #'text #tuplet-number::calc-fraction-text
+                    \times 6/7 {
+                        c'8. ~
+                        c'8 ~
+                        c'16
+                        r16
+                    }
+                    \tweak #'text #tuplet-number::calc-fraction-text
+                    \times 6/7 {
+                        r16
+                        c'8 ~
+                        c'4
+                    }
+                    c'4.
+                }
+
+            The tied note rewriting is good while the tuplet rewriting
+            could use some adjustment.
+
+            **Example 9b.** Rewrites notes but not tuplets:
+
+            ::
+
+                >>> measure = Measure((6, 4), [
+                ...     Note("c'4."),
+                ...     Tuplet((6, 7), "c'4. r16"),
+                ...     Tuplet((6, 7), "r16 c'4."),
+                ...     Note("c'4."),
+                ...     ])
+                >>> string = r"c'8 ~ c'8 ~ c'8 \times 6/7 { c'4. r16 }"
+                >>> string += r" \times 6/7 { r16 c'4. } c'8 ~ c'8 ~ c'8"
+                >>> measure = Measure((6, 4), string)
+                >>> show(measure) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(measure))
+                {
+                    \time 6/4
+                    c'8 ~
+                    c'8 ~
+                    c'8
+                    \tweak #'text #tuplet-number::calc-fraction-text
+                    \times 6/7 {
+                        c'4.
+                        r16
+                    }
+                    \tweak #'text #tuplet-number::calc-fraction-text
+                    \times 6/7 {
+                        r16
+                        c'4.
+                    }
+                    c'8 ~
+                    c'8 ~
+                    c'8
+                }
+
+            ::
+
+                >>> meter = metertools.Meter((6, 4))
+                >>> mutate(measure[:]).rewrite_meter(
+                ...     meter,
+                ...     boundary_depth=1,
+                ...     rewrite_tuplets=False,
+                ...     )
+                >>> show(measure) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(measure))
+                {
+                    \time 6/4
+                    c'4.
+                    \tweak #'text #tuplet-number::calc-fraction-text
+                    \times 6/7 {
+                        c'4.
+                        r16
+                    }
+                    \tweak #'text #tuplet-number::calc-fraction-text
+                    \times 6/7 {
+                        r16
+                        c'4.
+                    }
+                    c'4.
+                }
 
         Operates in place and returns none.
         '''
+        from abjad.tools import scoretools
         from abjad.tools import selectiontools
-        from abjad.tools.metertools._rewrite_meter \
-            import _rewrite_meter
-        assert isinstance(self._client, selectiontools.Selection)
+        from abjad.tools.metertools._rewrite_meter import _rewrite_meter
+        selection = self._client
+        if isinstance(selection, scoretools.Container):
+            selection = selection[:]
+        assert isinstance(selection, selectiontools.Selection)
         result = _rewrite_meter(
-            self._client,
+            selection,
             meter,
             boundary_depth=boundary_depth,
             initial_offset=initial_offset,
             maximum_dot_count=maximum_dot_count,
+            rewrite_tuplets=rewrite_tuplets,
+            use_messiaen_style_ties=use_messiaen_style_ties,
             )
         return result
 
@@ -1881,6 +2103,8 @@ class MutationAgent(abctools.AbjadObject):
         ):
         r'''Splices `components` to the right or left of selection.
 
+        ..  todo:: Add examples.
+
         Returns list of components.
         '''
         return self._client._splice(
@@ -1899,6 +2123,7 @@ class MutationAgent(abctools.AbjadObject):
         fracture_spanners=False,
         cyclic=False,
         tie_split_notes=True,
+        use_messiaen_style_ties=False,
         ):
         r'''Splits component or selection by `durations`.
 
@@ -2136,8 +2361,8 @@ class MutationAgent(abctools.AbjadObject):
 
         ..  container:: example
 
-            **Example 5.** Split tupletted leaves and fracture
-                crossing spanners:
+            **Example 5.** Split tupletted leaves and fracture crossing
+            spanners:
 
             ::
 
@@ -2190,6 +2415,84 @@ class MutationAgent(abctools.AbjadObject):
                         d'4
                         e'4 )
                     }
+                }
+
+        ..  container:: example
+
+            **Example 6a.** Splits leaves cyclically and ties split notes:
+
+            ::
+
+                >>> staff = Staff("c'1 d'1")
+                >>> hairpin = spannertools.Hairpin(descriptor='p < f')
+                >>> attach(hairpin, staff[:])
+                >>> override(staff).dynamic_line_spanner.staff_padding = 3
+                >>> show(staff) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(staff))
+                \new Staff \with {
+                    \override DynamicLineSpanner #'staff-padding = #3
+                } {
+                    c'1 \< \p
+                    d'1 \f
+                }
+
+            ::
+
+                >>> durations = [Duration(3, 4)]
+                >>> result = mutate(staff[:]).split(
+                ...     durations,
+                ...     cyclic=True,
+                ...     fracture_spanners=False,
+                ...     tie_split_notes=True,
+                ...     )
+                >>> show(staff) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(staff))
+                \new Staff \with {
+                    \override DynamicLineSpanner #'staff-padding = #3
+                } {
+                    c'2. ~ \< \p
+                    c'4
+                    d'2 ~
+                    d'2 \f
+                }
+
+            **Example 6b.** As above but with Messiaen-style ties:
+
+            ::
+
+                >>> staff = Staff("c'1 d'1")
+                >>> hairpin = spannertools.Hairpin(descriptor='p < f')
+                >>> attach(hairpin, staff[:])
+                >>> override(staff).dynamic_line_spanner.staff_padding = 3
+
+            ::
+
+                >>> durations = [Duration(3, 4)]
+                >>> result = mutate(staff[:]).split(
+                ...     durations,
+                ...     cyclic=True,
+                ...     fracture_spanners=False,
+                ...     tie_split_notes=True,
+                ...     use_messiaen_style_ties=True,
+                ...     )
+                >>> show(staff) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(staff))
+                \new Staff \with {
+                    \override DynamicLineSpanner #'staff-padding = #3
+                } {
+                    c'2. \< \p
+                    c'4 \repeatTie
+                    d'2
+                    d'2 \repeatTie \f
                 }
 
         Returns list of selections.
@@ -2286,6 +2589,7 @@ class MutationAgent(abctools.AbjadObject):
                         cyclic=False,
                         fracture_spanners=fracture_spanners,
                         tie_split_notes=tie_split_notes,
+                        use_messiaen_style_ties=use_messiaen_style_ties,
                         )
                     shard.extend(leaf_shards)
                     result.append(shard)
@@ -2296,6 +2600,7 @@ class MutationAgent(abctools.AbjadObject):
                         local_split_duration,
                         fracture_spanners=fracture_spanners,
                         tie_split_notes=tie_split_notes,
+                        use_messiaen_style_ties=use_messiaen_style_ties,
                         )
                     shard.extend(left_list)
                     result.append(shard)
@@ -2400,55 +2705,59 @@ class MutationAgent(abctools.AbjadObject):
     def transpose(self, expr):
         r'''Transposes notes and chords in mutation client by `expr`.
 
-        ::
+        ..  container:: example
 
-            >>> staff = Staff()
-            >>> staff.append(Measure((4, 4), "c'4 d'4 e'4 r4"))
-            >>> staff.append(Measure((3, 4), "d'4 e'4 <f' a' c''>4"))
-            >>> show(staff) # doctest: +SKIP
+            **Example 1.** Transposes notes and chords in staff:
 
-        ..  doctest::
+            ::
+
+                >>> staff = Staff()
+                >>> staff.append(Measure((4, 4), "c'4 d'4 e'4 r4"))
+                >>> staff.append(Measure((3, 4), "d'4 e'4 <f' a' c''>4"))
+                >>> show(staff) # doctest: +SKIP
+
+            ..  doctest::
+
+                    >>> print(format(staff))
+                    \new Staff {
+                        {
+                            \time 4/4
+                            c'4
+                            d'4
+                            e'4
+                            r4
+                        }
+                        {
+                            \time 3/4
+                            d'4
+                            e'4
+                            <f' a' c''>4
+                        }
+                    }
+
+            ::
+
+                >>> mutate(staff).transpose("+m3")
+                >>> show(staff) # doctest: +SKIP
+
+            ..  doctest::
 
                 >>> print(format(staff))
                 \new Staff {
                     {
                         \time 4/4
-                        c'4
-                        d'4
-                        e'4
+                        ef'4
+                        f'4
+                        g'4
                         r4
                     }
                     {
                         \time 3/4
-                        d'4
-                        e'4
-                        <f' a' c''>4
+                        f'4
+                        g'4
+                        <af' c'' ef''>4
                     }
                 }
-
-        ::
-
-            >>> mutate(staff).transpose("+m3")
-            >>> show(staff) # doctest: +SKIP
-
-        ..  doctest::
-
-            >>> print(format(staff))
-            \new Staff {
-                {
-                    \time 4/4
-                    ef'4
-                    f'4
-                    g'4
-                    r4
-                }
-                {
-                    \time 3/4
-                    f'4
-                    g'4
-                    <af' c'' ef''>4
-                }
-            }
 
         Returns none.
         '''

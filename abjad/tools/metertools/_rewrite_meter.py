@@ -14,11 +14,19 @@ def _rewrite_meter(
     boundary_depth=None,
     initial_offset=None,
     maximum_dot_count=None,
+    rewrite_tuplets=True,
+    use_messiaen_style_ties=False,
     ):
     from abjad.tools import metertools
+    from abjad.tools import scoretools
 
     assert isinstance(components, selectiontools.Selection), \
         repr(components)
+
+    if not isinstance(meter, metertools.Meter):
+        meter = metertools.Meter(meter)
+
+    boundary_depth = boundary_depth or meter.preferred_boundary_depth
 
     def recurse(
         boundary_depth=None,
@@ -69,7 +77,10 @@ def _rewrite_meter(
                 split_offset -= logical_tie_start_offset
                 #print('\tREL:', split_offset)
                 #print()
-                shards = mutate(logical_tie[:]).split([split_offset])
+                shards = mutate(logical_tie[:]).split(
+                    [split_offset],
+                    use_messiaen_style_ties=use_messiaen_style_ties,
+                    )
                 logical_ties = \
                     [selectiontools.LogicalTie(shard) for shard in shards]
                 for logical_tie in logical_ties:
@@ -109,7 +120,10 @@ def _rewrite_meter(
             split_offset -= logical_tie_start_offset
             #print('\tREL:', split_offset)
             #print()
-            shards = mutate(logical_tie[:]).split([split_offset])
+            shards = mutate(logical_tie[:]).split(
+                [split_offset],
+                use_messiaen_style_ties=use_messiaen_style_ties,
+                )
             logical_ties = \
                 [selectiontools.LogicalTie(shard) for shard in shards]
             for logical_tie in logical_ties:
@@ -178,6 +192,8 @@ def _rewrite_meter(
                 depth=0,
                 logical_tie=item,
                 )
+        elif isinstance(item, scoretools.Tuplet) and rewrite_tuplets == False:
+            pass
         else:
             #print('DESCENDING:', item)
             preprolated_duration = sum([x._preprolated_duration for x in item])

@@ -1,13 +1,14 @@
 # -*- encoding: utf-8 -*-
 import collections
 from abjad.tools.datastructuretools.TypedCollection import TypedCollection
-from abjad.tools.topleveltools import new
 
 
 class TypedOrderedDict(TypedCollection):
     r'''A typed ordered dictionary.
 
     ..  container:: example
+
+        **Example 1.** Initializes from list of pairs:
 
         ::
 
@@ -19,6 +20,74 @@ class TypedOrderedDict(TypedCollection):
         ::
 
             >>> print(format(dictionary))
+            datastructuretools.TypedOrderedDict(
+                [
+                    ('color', 'red'),
+                    (
+                        'directive',
+                        markuptools.Markup(
+                            contents=(
+                                markuptools.MarkupCommand(
+                                    'italic',
+                                    'Allegretto'
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ]
+                )
+
+    ..  container:: example
+
+        **Example 2.** Initializes from built-in dictionary:
+
+        ::
+
+            >>> dictionary = {
+            ...     'color': 'red',
+            ...     'directive': Markup(r'\italic Allegretto'),
+            ...     }
+            >>> dictionary = datastructuretools.TypedOrderedDict(
+            ...     dictionary
+            ...     )
+
+        ::
+
+            >>> print(format(dictionary))
+            datastructuretools.TypedOrderedDict(
+                [
+                    ('color', 'red'),
+                    (
+                        'directive',
+                        markuptools.Markup(
+                            contents=(
+                                markuptools.MarkupCommand(
+                                    'italic',
+                                    'Allegretto'
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ]
+                )
+
+    ..  container:: example
+
+        **Example 3.** Initializes from other typed ordered dictionary:
+
+        ::
+
+            >>> dictionary_1 = datastructuretools.TypedOrderedDict([
+            ...     ('color', 'red'),
+            ...     ('directive', Markup(r'\italic Allegretto')),
+            ...     ])
+            >>> dictionary_2 = datastructuretools.TypedOrderedDict(
+            ...     dictionary_1
+            ...     )
+
+        ::
+
+            >>> print(format(dictionary_2))
             datastructuretools.TypedOrderedDict(
                 [
                     ('color', 'red'),
@@ -49,10 +118,11 @@ class TypedOrderedDict(TypedCollection):
         TypedCollection.__init__(
             self,
             item_class=item_class,
-            items=items,
             )
-        if isinstance(items, collections.Mapping):
-            items = items.items()
+        if isinstance(items, dict):
+            items = sorted(items.items())
+        elif isinstance(items, collections.Mapping):
+            items = list(items.items())
         items = items or []
         the_items = []
         for item in items:
@@ -61,7 +131,7 @@ class TypedOrderedDict(TypedCollection):
             value = self._item_coercer(item[1])
             the_item = (key, value)
             the_items.append(the_item)
-        self._collection = collections.OrderedDict(items)
+        self._collection = collections.OrderedDict(the_items)
 
     ### SPECIAL METHODS ###
 
@@ -154,6 +224,26 @@ class TypedOrderedDict(TypedCollection):
         new_item = self._item_coercer(expr)
         self._collection[i] = new_item
 
+    ### PRIVATE PROPERTIES ###
+
+    @property
+    def _storage_format_specification(self):
+        from abjad.tools import systemtools
+        manager = systemtools.StorageFormatManager
+        names = manager.get_signature_keyword_argument_names(self)
+        keyword_argument_names = list(names)
+        if 'items' in keyword_argument_names:
+            keyword_argument_names.remove('items')
+        keyword_argument_names = tuple(keyword_argument_names)
+        positional_argument_values = (
+            list(self._collection.items()),
+            )
+        return systemtools.StorageFormatSpecification(
+            self,
+            keyword_argument_names=keyword_argument_names,
+            positional_argument_values=positional_argument_values,
+            )
+
     ### PUBLIC METHODS ###
 
     def clear(self):
@@ -188,13 +278,6 @@ class TypedOrderedDict(TypedCollection):
         Returns boolean.
         '''
         return key in self._collection
-
-    def items(self):
-        r'''Aliases OrderedDict.items().
-
-        Returns list.
-        '''
-        return list(self._collection.items())
 
     def items(self):
         r'''Aliases OrderedDict.items().

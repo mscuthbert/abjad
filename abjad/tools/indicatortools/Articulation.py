@@ -1,15 +1,15 @@
 # -*- encoding: utf-8 -*-
 import copy
 from abjad.tools import stringtools
-from abjad.tools.abctools.AbjadObject import AbjadObject
+from abjad.tools.abctools.AbjadValueObject import AbjadValueObject
 
 
-class Articulation(AbjadObject):
+class Articulation(AbjadValueObject):
     r'''An articulation.
 
     ..  container:: example
 
-        Initializes from name:
+        **Example 1.** Initializes from name:
 
         ::
 
@@ -18,7 +18,7 @@ class Articulation(AbjadObject):
 
     ..  container:: example
 
-        Initializes from abbreviation:
+        **Example 2.** Initializes from abbreviation:
 
         ::
 
@@ -27,7 +27,7 @@ class Articulation(AbjadObject):
 
     ..  container:: example
 
-        Initializes from other articulation:
+        **Example 3.** Initializes from other articulation:
 
         ::
 
@@ -37,7 +37,7 @@ class Articulation(AbjadObject):
 
     ..  container:: example
 
-        Initializes with direction:
+        **Example 4.** Initializes with direction:
 
         ::
 
@@ -46,7 +46,8 @@ class Articulation(AbjadObject):
 
     .. container:: example
 
-        Use `attach()` to attach articulations to notes, rests or chords:
+        **Example 5.** Use `attach()` to attach articulations to notes, rests
+        or chords:
 
         ::
 
@@ -55,14 +56,18 @@ class Articulation(AbjadObject):
             >>> attach(articulation, note)
             >>> show(note) # doctest: +SKIP
 
+    ..  todo:: Simplify initializer. Allow only initialization from name.
+        Implement new ``from_abbreviation()`` and ``from_articulation()``
+        methods to replace existing initializer polymorphism.
     '''
 
     ### CLASS VARIABLES ###
 
     __slots__ = (
-        '_name',
+        '_default_scope',
         '_direction',
         '_format_slot',
+        '_name',
         )
 
     # this causes unnecessary coupling to changeable lilypond codebase
@@ -130,63 +135,26 @@ class Articulation(AbjadObject):
 
     ### INITIALIZER ###
 
-    def __init__(self, *args):
-        from abjad.tools import datastructuretools
-        assert len(args) in range(3), repr(args)
-        if 2 <= len(args):
-            assert isinstance(args[0], (str, type(None))), repr(args[0])
-            assert isinstance(args[1],
-                (str, type(None), datastructuretools.OrdinalConstant)), \
-                repr(args[1])
-            name, direction = args
-        elif len(args) == 1 and isinstance(args[0], type(self)):
-            name = args[0].name
-            direction = args[0].direction
-        elif len(args) == 1:
-            assert isinstance(args[0],
-                (str, type(None), datastructuretools.OrdinalConstant)), \
-                repr(args[0])
-            if args[0]:
-                splits = args[0].split('\\')
-                assert len(splits) in (1, 2), repr(splits)
-                if len(splits) == 1:
-                    name, direction = args[0], None
-                elif len(splits) == 2:
-                    name = splits[1]
-                    if splits[0]:
-                        direction = splits[0]
-                    else:
-                        direction = None
-            else:
-                name, direction = None, None
-        else:
-            name, direction = None, None
-        self._name = name
+    def __init__(self, name=None, direction=None):
+        self._default_scope = None
+        if isinstance(name, type(self)):
+            expr = name
+            name = expr.name
+            direction = direction or expr.direction
+        name = str(name)
+        if '\\' in name:
+            direction, name = name.split('\\')
+            direction = direction.strip()
+            name = name.strip()
         direction = \
-            stringtools.arg_to_tridirectional_ordinal_constant(direction)
+            stringtools.expr_to_tridirectional_ordinal_constant(direction)
+        directions = (Up, Down, Center, None)
+        assert direction in directions, repr(direction)
+        self._name = name
         self._direction = direction
         self._format_slot = 'right'
 
     ### SPECIAL METHODS ###
-
-    def __copy__(self, *args):
-        r'''Copies articulation.
-
-        Returns new articulation.
-        '''
-        return type(self)(self.name, self.direction)
-
-    def __eq__(self, expr):
-        r'''Is true when `expr` is an articulation with name and direction
-        equal to that of this articulation. Otherwise false.
-
-        Returns boolean.
-        '''
-        if isinstance(expr, type(self)):
-            if expr.name == self.name:
-                if self.direction == expr.direction:
-                    return True
-        return False
 
     def __format__(self, format_specification=''):
         r'''Formats articulation.
@@ -202,15 +170,6 @@ class Articulation(AbjadObject):
         elif format_specification == 'lilypond':
             return self._lilypond_format
         return str(self)
-
-    def __hash__(self):
-        r'''Hashes articulation.
-
-        Required to be explicitly re-defined on Python 3 if __eq__ changes.
-
-        Returns integer.
-        '''
-        return super(Articulation, self).__hash__()
 
     def __illustrate__(self):
         r'''Illustrates articulation.
@@ -229,7 +188,7 @@ class Articulation(AbjadObject):
         return lilypond_file
 
     def __str__(self):
-        r'''String representation of articulation.
+        r'''Gets string representation of articulation.
 
         Returns string.
         '''
@@ -240,12 +199,19 @@ class Articulation(AbjadObject):
             if self.direction is None:
                 direction = '-'
             else:
-                direction = \
-                    stringtools.arg_to_tridirectional_lilypond_symbol(
-                        self.direction)
-            return '%s\%s' % (direction, string)
+                direction = stringtools.expr_to_tridirectional_lilypond_symbol(
+                    self.direction)
+            return '{}\{}'.format(direction, string)
         else:
             return ''
+
+    ### PRIVATE METHODS ###
+
+    def _get_lilypond_format_bundle(self, component=None):
+        from abjad.tools import systemtools
+        lilypond_format_bundle = systemtools.LilyPondFormatBundle()
+        lilypond_format_bundle.right.articulations.append(str(self))
+        return lilypond_format_bundle
 
     ### PRIVATE PROPERTIES ###
 
@@ -259,13 +225,6 @@ class Articulation(AbjadObject):
     @property
     def _lilypond_format(self):
         return str(self)
-
-    @property
-    def _lilypond_format_bundle(self):
-        from abjad.tools import systemtools
-        lilypond_format_bundle = systemtools.LilyPondFormatBundle()
-        lilypond_format_bundle.right.articulations.append(str(self))
-        return lilypond_format_bundle
 
     @property
     def _storage_format_specification(self):
@@ -283,23 +242,66 @@ class Articulation(AbjadObject):
     ### PUBLIC PROPERTIES ###
 
     @property
+    def default_scope(self):
+        r'''Gets default scope of articulation.
+
+        ..  container:: example
+
+            >>> articulation = Articulation('staccato')
+            >>> articulation.default_scope is None
+            True
+
+        Returns none.
+        '''
+        return self._default_scope
+
+    @property
     def direction(self):
-        r'''Direction of articulation.
+        r'''Gets direction of articulation.
+
+        ..  container:: example
+
+            **Example 1.** Without direction:
+
+            >>> articulation = Articulation('staccato')
+            >>> articulation.direction is None
+            True
+
+        ..  container:: example
+
+            **Example 2.** With direction:
+
+            >>> articulation = Articulation('staccato', direction=Up)
+            >>> articulation.direction
+            Up
 
         Returns ordinal constant or none.
         '''
-        assert self._direction in (Up, Down, Center, None), \
-            repr(self._direction)
         return self._direction
 
     @property
     def name(self):
-        r'''Name of articulation.
+        r'''Gets name of articulation.
 
-        ::
+        ..  container:: example
 
-            >>> articulation.name
-            'staccato'
+            **Example 1.** Staccato:
+
+            ::
+
+                >>> articulation = Articulation('staccato')
+                >>> articulation.name
+                'staccato'
+
+        ..  container:: example
+
+            **Example 2.** Tenuto:
+
+            ::
+
+                >>> articulation = Articulation('tenuto')
+                >>> articulation.name
+                'tenuto'
 
         Returns string.
         '''

@@ -66,6 +66,8 @@ class ReiteratedArticulationHandler(ArticulationHandler):
             logical_tie = inspect_(note_or_chord).get_logical_tie()
             if self.skip_ties and not logical_tie.is_trivial:
                 continue
+            if not note_or_chord is logical_tie.head:
+                continue
             duration = logical_tie.get_duration()
             if self.minimum_duration is not None:
                 if duration < self.minimum_duration:
@@ -96,40 +98,6 @@ class ReiteratedArticulationHandler(ArticulationHandler):
                 attach(articulation, note_or_chord)
         return expr
 
-    ### PRIVATE PROPERTIES ###
-
-    @property
-    def _attribute_manifest(self):
-        from abjad.tools import systemtools
-        from ide import idetools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='articulation_list',
-                command='al',
-                editor=idetools.getters.get_articulations,
-                ),
-            systemtools.AttributeDetail(
-                name='minimum_duration',
-                command='nd',
-                editor=idetools.getters.get_duration,
-                ),
-            systemtools.AttributeDetail(
-                name='maximum_duration',
-                command='xd',
-                editor=idetools.getters.get_duration,
-                ),
-            systemtools.AttributeDetail(
-                name='minimum_written_pitch',
-                command='np',
-                editor=idetools.getters.get_named_pitch,
-                ),
-            systemtools.AttributeDetail(
-                name='maximum_written_pitch',
-                command='xp',
-                editor=idetools.getters.get_named_pitch,
-                ),
-            )
-
     ### PUBLIC PROPERTIES ###
 
     @property
@@ -142,8 +110,68 @@ class ReiteratedArticulationHandler(ArticulationHandler):
 
     @property
     def skip_ties(self):
-        r'''Is true when handler should skip ties.
+        r'''Is true when handler should skip ties. Otherwise false.
+
+        ..  container:: example
+
+            **Example 1.** Doesn't skip ties:
+
+            ::
+
+                >>> handler = handlertools.ReiteratedArticulationHandler(
+                ...     articulation_list=['>'],
+                ...     skip_ties=False,
+                ...     )
+                >>> staff = Staff("c'4. ~ c'8 d'8 e'8 f'8 g'8")
+                >>> logical_ties = iterate(staff).by_logical_tie(pitched=True)
+                >>> logical_ties = list(logical_ties)
+                >>> logical_ties = handler(logical_ties)
+                >>> show(staff) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(staff))
+                \new Staff {
+                    c'4. -\accent ~
+                    c'8 
+                    d'8 -\accent
+                    e'8 -\accent
+                    f'8 -\accent
+                    g'8 -\accent
+                }
+
+        ..  container:: example
+
+            **Example 2.** Skips ties:
+
+            ::
+
+                >>> handler = handlertools.ReiteratedArticulationHandler(
+                ...     articulation_list=['>'],
+                ...     skip_ties=True,
+                ...     )
+                >>> staff = Staff("c'4. ~ c'8 d'8 e'8 f'8 g'8")
+                >>> logical_ties = iterate(staff).by_logical_tie(pitched=True)
+                >>> logical_ties = list(logical_ties)
+                >>> logical_ties = handler(logical_ties)
+                >>> show(staff) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> print(format(staff))
+                \new Staff {
+                    c'4. ~
+                    c'8
+                    d'8 -\accent
+                    e'8 -\accent
+                    f'8 -\accent
+                    g'8 -\accent
+                }
+
+        Defaults to false.
 
         Set to true or false.
+
+        Returns true or false.
         '''
         return self._skip_ties

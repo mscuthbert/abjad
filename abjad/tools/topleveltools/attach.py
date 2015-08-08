@@ -6,6 +6,7 @@ def attach(
     component_expression,
     scope=None,
     is_annotation=None,
+    name=None,
     ):
     r'''Attaches `indicator` to `component_expression`.
 
@@ -24,6 +25,9 @@ def attach(
         assert isinstance(indicator, prototype), repr(indicator)
         assert scope is None
         indicator._attach(component_expression)
+        if isinstance(indicator, spannertools.Spanner):
+            name = name or indicator.name
+            indicator._name = name
         return
 
     component = component_expression
@@ -32,8 +36,9 @@ def attach(
     assert isinstance(component, prototype), repr(component)
 
     if isinstance(indicator, indicatortools.IndicatorExpression):
-        scope = scope or indicator.scope
         is_annotation = is_annotation or indicator.is_annotation
+        name = name or indicator.name
+        scope = scope or indicator.scope
         indicator._detach()
         indicator = indicator.indicator
 
@@ -44,6 +49,7 @@ def attach(
         component=component,
         indicator=indicator,
         is_annotation=is_annotation,
+        name=name,
         scope=scope,
         )
     expression._bind_to_component(component)

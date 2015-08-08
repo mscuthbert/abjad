@@ -83,7 +83,7 @@ class PersistenceAgent(abctools.AbjadObject):
         from abjad import abjad_configuration
         from abjad.tools import systemtools
         if illustrate_function is None:
-            assert '__illustrate__' in dir(self._client)
+            assert hasattr(self._client, '__illustrate__')
             illustrate_function = self._client.__illustrate__
         illustration = illustrate_function(**kwargs)
         if ly_file_path is None:
@@ -139,7 +139,7 @@ class PersistenceAgent(abctools.AbjadObject):
         '''
         from abjad.tools import lilypondfiletools
         from abjad.tools import systemtools
-        assert '__illustrate__' in dir(self._client)
+        assert hasattr(self._client, '__illustrate__')
         illustration = self._client.__illustrate__(**kwargs)
         assert hasattr(illustration, 'score_block')
         block = lilypondfiletools.Block(name='midi')
@@ -188,7 +188,8 @@ class PersistenceAgent(abctools.AbjadObject):
         from abjad.tools import systemtools
         manager = systemtools.StorageFormatManager
         result = ['# -*- encoding: utf-8 -*-']
-        result.extend(manager.get_import_statements(self._client))
+        import_statements = manager.get_import_statements(self._client)
+        result.extend(import_statements)
         result.extend(('', ''))
         if '_storage_format_specification' in dir(self._client):
             storage_pieces = format(self._client, 'storage')
@@ -245,7 +246,7 @@ class PersistenceAgent(abctools.AbjadObject):
         '''
         from abjad.tools import systemtools
         if illustrate_function is None:
-            assert '__illustrate__' in dir(self._client)
+            assert hasattr(self._client, '__illustrate__')
         if pdf_file_path is not None:
             pdf_file_path = os.path.expanduser(pdf_file_path)
             without_extension = os.path.splitext(pdf_file_path)[0]
@@ -328,7 +329,7 @@ class PersistenceAgent(abctools.AbjadObject):
         '''
         from abjad.tools import systemtools
         if illustrate_function is None:
-            assert '__illustrate__' in dir(self._client)
+            assert hasattr(self._client, '__illustrate__')
         if png_file_path is not None:
             png_file_path = os.path.expanduser(png_file_path)
             without_extension = os.path.splitext(png_file_path)[0]

@@ -1,5 +1,7 @@
 # -*- encoding: utf-8 -*-
+from __future__ import print_function
 import abc
+import bisect
 import copy
 from abjad.tools import durationtools
 from abjad.tools import systemtools
@@ -34,6 +36,7 @@ class Component(AbjadObject):
         '_lilypond_grob_name_manager',
         '_lilypond_setting_name_manager',
         '_logical_measure_number',
+        '_name',
         '_offsets_are_current',
         '_offsets_in_seconds_are_current',
         '_parent',
@@ -50,7 +53,7 @@ class Component(AbjadObject):
     ### INITIALIZER ###
 
     @abc.abstractmethod
-    def __init__(self):
+    def __init__(self, name=None):
         self._after_grace = None
         self._dependent_expressions = []
         self._grace = None
@@ -69,6 +72,9 @@ class Component(AbjadObject):
         self._stop_offset = None
         self._stop_offset_in_seconds = None
         self._timespan = timespantools.Timespan()
+        self._name = None
+        if name is not None:
+            self.name = name  # name must be setup *after* parent
 
     ### SPECIAL METHODS ###
 
@@ -164,6 +170,31 @@ class Component(AbjadObject):
 
     ### PRIVATE METHODS ###
 
+    def _as_graphviz_node(self):
+        from abjad.tools import documentationtools
+        score_index = self._get_parentage().score_index
+        score_index = '_'.join(str(_) for _ in score_index)
+        class_name = type(self).__name__
+        if score_index:
+            name = '{}_{}'.format(class_name, score_index)
+        else:
+            name = class_name
+        node = documentationtools.GraphvizNode(
+            name=name,
+            attributes={
+                'margin': 0.05,
+                },
+            )
+        table = documentationtools.GraphvizTable(
+            attributes={
+                'border': 2,
+                'cellpadding': 5,
+                'style': 'rounded',
+                },
+            )
+        node.append(table)
+        return node
+
     def _cache_named_children(self):
         name_dictionary = {}
         if hasattr(self, '_named_children'):
@@ -174,6 +205,13 @@ class Component(AbjadObject):
                 name_dictionary[self.name] = []
             name_dictionary[self.name].append(self)
         return name_dictionary
+
+    def _check_for_cycles(self, components):
+        parentage = self._get_parentage()
+        for component in components:
+            if component in parentage:
+                return True
+        return False
 
     def _copy_with_children_and_indicators_but_without_spanners(self):
         return self._copy_with_indicators_but_without_children_or_spanners()
@@ -305,13 +343,13 @@ class Component(AbjadObject):
             parentage = self._get_parentage(include_self=False)
             return parentage.prolation * self._preprolated_duration
 
-    def _get_effective(self, prototype=None, unwrap=True):
+    def _get_effective(self, prototype=None, unwrap=True, n=0):
         from abjad.tools import indicatortools
         from abjad.tools import datastructuretools
         from abjad.tools import scoretools
         # return time signature attached to measure regardless of scope
-        if prototype == indicatortools.TimeSignature or \
-            prototype == (indicatortools.TimeSignature,):
+        if (prototype == indicatortools.TimeSignature or
+            prototype == (indicatortools.TimeSignature,)):
             if isinstance(self, scoretools.Measure):
                 if self._has_indicator(indicatortools.TimeSignature):
                     indicator = self._get_indicator(
@@ -335,16 +373,19 @@ class Component(AbjadObject):
                     candidate_expressions.insert(expression)
         #print candidate_expressions, 'CW'
         # elect most recent candidate expression
-        if candidate_expressions:
-            try:
-                start_offset = self._get_timespan().start_offset
-                expression = candidate_expressions.find_le(start_offset)
-                if unwrap:
-                    return expression.indicator
-                else:
-                    return expression
-            except ValueError:
-                pass
+        if not candidate_expressions:
+            return
+        start_offset = self._get_timespan().start_offset
+        index = bisect.bisect_right(candidate_expressions._keys, start_offset)
+        index = (index - 1) + int(n)
+        if index < 0:
+            return
+        elif len(candidate_expressions) <= index:
+            return
+        expression = candidate_expressions._items[index]
+        if unwrap:
+            expression = expression.indicator
+        return expression
 
     def _get_effective_staff(self):
         from abjad.tools import indicatortools
@@ -392,11 +433,11 @@ class Component(AbjadObject):
     def _get_grace_containers(self, kind=None):
         from abjad.tools import scoretools
         result = []
-        if kind in (None, 'grace') and \
-            getattr(self, '_grace', None) is not None:
+        if (kind in (None, 'grace') and
+            getattr(self, '_grace', None) is not None):
             result.append(self._grace)
-        if kind in (None, 'after') and \
-            getattr(self, '_after_grace', None) is not None:
+        if (kind in (None, 'after') and
+            getattr(self, '_after_grace', None) is not None):
             result.append(self._after_grace)
         elif kind == scoretools.GraceContainer:
             if self._grace is not None:
@@ -527,8 +568,11 @@ class Component(AbjadObject):
                     if 0 <= index + n:
                         return self._parent[index + n]
 
-    def _get_spanner(self, prototype=None):
-        spanners = self._get_spanners(prototype=prototype)
+    def _get_spanner(self, prototype=None, in_parentage=False):
+        spanners = self._get_spanners(
+            prototype=prototype,
+            in_parentage=in_parentage,
+            )
         if not spanners:
             message = 'no spanner found.'
             raise MissingSpannerError(message)
@@ -548,7 +592,11 @@ class Component(AbjadObject):
             matching_indicators.extend(result)
         return matching_indicators
 
-    def _get_spanners(self, prototype=None):
+    def _get_spanners(
+        self,
+        prototype=None,
+        in_parentage=False,
+        ):
         from abjad.tools import spannertools
         prototype = prototype or (spannertools.Spanner,)
         if not isinstance(prototype, tuple):
@@ -566,11 +614,17 @@ class Component(AbjadObject):
         prototype = tuple(prototype)
         spanner_objects = tuple(spanner_objects)
         matching_spanners = set()
-        for spanner in set(self._spanners):
-            if isinstance(spanner, prototype):
-                matching_spanners.add(spanner)
-            elif any(spanner == x for x in spanner_objects):
-                matching_spanners.add(spanner)
+        in_parentage = bool(in_parentage)
+        if in_parentage:
+            components = self._get_parentage(include_self=True)
+        else:
+            components = (self,)
+        for component in components:
+            for spanner in set(component._spanners):
+                if isinstance(spanner, prototype):
+                    matching_spanners.add(spanner)
+                elif any(spanner == x for x in spanner_objects):
+                    matching_spanners.add(spanner)
         return matching_spanners
 
     def _get_timespan(self, in_seconds=False):
@@ -603,8 +657,15 @@ class Component(AbjadObject):
         indicators = self._get_indicators(prototype=prototype)
         return bool(indicators)
 
-    def _has_spanner(self, prototype=None):
-        spanners = self._get_spanners(prototype=prototype)
+    def _has_spanner(
+        self,
+        prototype=None,
+        in_parentage=False,
+        ):
+        spanners = self._get_spanners(
+            prototype=prototype,
+            in_parentage=in_parentage,
+            )
         return bool(spanners)
 
     def _is_immediate_temporal_successor_of(self, component):
@@ -810,3 +871,30 @@ class Component(AbjadObject):
             offsets_in_seconds=offsets_in_seconds,
             indicators=indicators,
             )
+
+    ### PUBLIC PROPERTIES ###
+
+    @property
+    def name(self):
+        r'''Gets and sets name of component.
+
+        Returns string or none.
+        '''
+        return self._name
+
+    @name.setter
+    def name(self, arg):
+        assert isinstance(arg, (str, type(None)))
+        old_name = self._name
+        for parent in self._get_parentage(include_self=False):
+            named_children = parent._named_children
+            if old_name is not None:
+                named_children[old_name].remove(self)
+                if not named_children[old_name]:
+                    del named_children[old_name]
+            if arg is not None:
+                if arg not in named_children:
+                    named_children[arg] = [self]
+                else:
+                    named_children[arg].append(self)
+        self._name = arg

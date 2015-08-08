@@ -1,10 +1,12 @@
 # -*- encoding: utf-8 -*-
+from __future__ import print_function
 import collections
 from abjad.tools import abctools
 from abjad.tools import durationtools
 from abjad.tools import scoretools
 from abjad.tools import sequencetools
 from abjad.tools import spannertools
+from abjad.tools.topleveltools import inspect_
 from abjad.tools.topleveltools import iterate
 
 
@@ -808,10 +810,13 @@ class IterationAgent(abctools.AbjadObject):
         Returns generator.
         '''
         from abjad.tools import selectiontools
+        if not isinstance(classes, collections.Sequence):
+            classes = (classes,)
         sequence = selectiontools.SliceSelection(self._client)
         current_group = ()
         for group in sequence.group_by(type):
-            if type(group[0]) in classes:
+            if any(isinstance(group[0], class_) for class_ in classes):
+            #if type(group[0]) in classes:
                 current_group = current_group + group
             elif current_group:
                 yield current_group
@@ -890,6 +895,57 @@ class IterationAgent(abctools.AbjadObject):
             if not voice.is_nonsemantic:
                 yield voice
 
+    def by_spanner(
+        self,
+        prototype=None,
+        reverse=False,
+        ):
+        r'''Iterates spanners forward in `expr`:
+
+        ::
+
+            >>> staff = Staff("c'8 d'8 e'8 f'8 g'8 a'8 f'8 b'8 c''8")
+            >>> attach(Slur(), staff[:4])
+            >>> attach(Slur(), staff[4:])
+            >>> attach(Beam(), staff[:])
+
+        ::
+
+            >>> for spanner in iterate(staff).by_spanner():
+            ...     spanner
+            ...
+            Beam("c'8, d'8, ... [5] ..., b'8, c''8")
+            Slur("c'8, d'8, e'8, f'8")
+            Slur("g'8, a'8, f'8, b'8, c''8")
+
+        Iterates spanners backward in `expr`:
+
+        ::
+
+            >>> for spanner in iterate(staff).by_spanner(reverse=True):
+            ...     spanner
+            ...
+            Beam("c'8, d'8, ... [5] ..., b'8, c''8")
+            Slur("g'8, a'8, f'8, b'8, c''8")
+            Slur("c'8, d'8, e'8, f'8")
+
+        Returns generator.
+        '''
+        visited_spanners = set()
+        for component in self.by_class(reverse=reverse):
+            spanners = inspect_(component).get_spanners(prototype=prototype)
+            spanners = sorted(spanners,
+                key=lambda x: (
+                    type(x).__name__,
+                    inspect_(x).get_timespan(),
+                    ),
+                )
+            for spanner in spanners:
+                if spanner in visited_spanners:
+                    continue
+                visited_spanners.add(spanner)
+                yield spanner
+
     def by_timeline(
         self,
         component_class=None,
@@ -958,24 +1014,196 @@ class IterationAgent(abctools.AbjadObject):
         '''
         if component_class is None:
             component_class = scoretools.Leaf
-        component_generator = iterate(self._client).by_class(component_class)
-        components = list(component_generator)
-        if not reverse:
-            components.sort(
-                key=lambda x: (
-                    x._get_timespan().start_offset,
-                    x._get_parentage().score_index,
-                    )
-                )
+        if isinstance(self.client, scoretools.Component):
+            components = [self.client]
         else:
-            components.sort(
-                key=lambda x: (
-                    -x._get_timespan().stop_offset,
-                    x._get_parentage().score_index,
+            components = list(self.client)
+        if not reverse:
+            while components:
+                #print('STEP:')
+                #for component in components:
+                #    print('   ', component)
+                #print()
+                current_start_offset = min(
+                    _._get_timespan().start_offset
+                    for _ in components
                     )
-                )
-        for component in components:
-            yield component
+                components.sort(
+                    key=lambda x: x._get_parentage().score_index,
+                    reverse=True,
+                    )
+                components_to_process = components[:]
+                components = []
+                while components_to_process:
+                    component = components_to_process.pop()
+                    start_offset = component._get_timespan().start_offset
+                    #print('    COMPONENT:', component)
+                    if current_start_offset < start_offset:
+                        components.append(component)
+                        #print('        TOO EARLY')
+                        continue
+                    if isinstance(component, component_class):
+                        #print('        YIELDING', component)
+                        yield component
+                    sibling = component._get_sibling(1)
+                    if sibling is not None:
+                        #print('        SIBLING:', sibling)
+                        components.append(sibling)
+                    if not isinstance(component, scoretools.Container):
+                        continue
+                    if not len(component):
+                        continue
+                    if not component.is_simultaneous:
+                        components_to_process.append(component[0])
+                    else:
+                        components_to_process.extend(reversed(component))
+        else:
+            while components:
+                #print('STEP')
+                #print()
+                current_stop_offset = max(
+                    _._get_timespan().stop_offset
+                    for _ in components
+                    )
+                components.sort(
+                    key=lambda x: x._get_parentage().score_index,
+                    reverse=True,
+                    )
+                components_to_process = components[:]
+                components = []
+                while components_to_process:
+                    component = components_to_process.pop()
+                    stop_offset = component._get_timespan().stop_offset
+                    #print('\tCOMPONENT:', component)
+                    if stop_offset < current_stop_offset:
+                        components.insert(0, component)
+                        continue
+                    if isinstance(component, component_class):
+                        yield component
+                    sibling = component._get_sibling(-1)
+                    if sibling is not None:
+                        components.insert(0, sibling)
+                    if not isinstance(component, scoretools.Container):
+                        continue
+                    if not len(component):
+                        continue
+                    if not component.is_simultaneous:
+                        components_to_process.append(component[-1])
+                    else:
+                        components_to_process.extend(reversed(component))
+
+    def by_timeline_and_logical_tie(
+        self,
+        nontrivial=False,
+        pitched=False,
+        reverse=False,
+        ):
+        r'''Iterate timeline by logical tie forward in `expr`:
+
+        ::
+
+            >>> score = Score([])
+            >>> score.append(Staff("c''4 ~ c''8 d''8 r4 ef''4"))
+            >>> score.append(Staff("r8 g'4. ~ g'8 r16 f'8. ~ f'8"))
+            >>> show(score) # doctest: +SKIP
+
+        ..  doctest::
+
+            >>> print(format(score))
+            \new Score <<
+                \new Staff {
+                    c''4 ~
+                    c''8
+                    d''8
+                    r4
+                    ef''4
+                }
+                \new Staff {
+                    r8
+                    g'4. ~
+                    g'8
+                    r16
+                    f'8. ~
+                    f'8
+                }
+            >>
+
+        ::
+
+            >>> for logical_tie in iterate(score).by_timeline_and_logical_tie():
+            ...     logical_tie
+            ...
+            LogicalTie(Note("c''4"), Note("c''8"))
+            LogicalTie(Rest('r8'),)
+            LogicalTie(Note("g'4."), Note("g'8"))
+            LogicalTie(Note("d''8"),)
+            LogicalTie(Rest('r4'),)
+            LogicalTie(Rest('r16'),)
+            LogicalTie(Note("f'8."), Note("f'8"))
+            LogicalTie(Note("ef''4"),)
+
+        Iterate timeline backward by logical tie in `expr`:
+
+        ::
+
+            >>> for logical_tie in iterate(score).by_timeline_and_logical_tie(
+            ...     reverse=True,
+            ...     ):
+            ...     logical_tie
+            ...
+            LogicalTie(Note("ef''4"),)
+            LogicalTie(Note("f'8."), Note("f'8"))
+            LogicalTie(Rest('r4'),)
+            LogicalTie(Rest('r16'),)
+            LogicalTie(Note("g'4."), Note("g'8"))
+            LogicalTie(Note("d''8"),)
+            LogicalTie(Note("c''4"), Note("c''8"))
+            LogicalTie(Rest('r8'),)
+
+        Iterate timeline by pitched logical tie in `expr`:
+
+        ::
+
+            >>> for logical_tie in iterate(score).by_timeline_and_logical_tie(
+            ...     pitched=True,
+            ...     ):
+            ...     logical_tie
+            ...
+            LogicalTie(Note("c''4"), Note("c''8"))
+            LogicalTie(Note("g'4."), Note("g'8"))
+            LogicalTie(Note("d''8"),)
+            LogicalTie(Note("f'8."), Note("f'8"))
+            LogicalTie(Note("ef''4"),)
+
+        Iterate timeline by nontrivial logical tie in `expr`:
+
+        ::
+
+            >>> for logical_tie in iterate(score).by_timeline_and_logical_tie(
+            ...     nontrivial=True,
+            ...     ):
+            ...     logical_tie
+            ...
+            LogicalTie(Note("c''4"), Note("c''8"))
+            LogicalTie(Note("g'4."), Note("g'8"))
+            LogicalTie(Note("f'8."), Note("f'8"))
+
+        '''
+        visited_logical_ties = set()
+        iterator = self.by_timeline(
+            component_class=scoretools.Leaf,
+            reverse=reverse,
+            )
+        for leaf in iterator:
+            logical_tie = leaf._get_logical_tie()
+            if logical_tie in visited_logical_ties:
+                continue
+            if nontrivial and logical_tie.is_trivial:
+                continue
+            if pitched and not logical_tie.is_pitched:
+                continue
+            visited_logical_ties.add(logical_tie)
+            yield logical_tie
 
     def by_timeline_from_component(
         self,

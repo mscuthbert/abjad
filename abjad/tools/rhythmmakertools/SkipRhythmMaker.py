@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 from abjad.tools import durationtools
+from abjad.tools import mathtools
 from abjad.tools import scoretools
 from abjad.tools.rhythmmakertools.RhythmMaker import RhythmMaker
 
@@ -50,8 +51,9 @@ class SkipRhythmMaker(RhythmMaker):
 
     ### CLASS VARIABLES ###
 
-    __slots__ = (
-        )
+    __documentation_section__ = 'Rhythm-makers'
+
+    __slots__ = ()
 
     _class_name_abbreviation = 'S'
 
@@ -59,7 +61,7 @@ class SkipRhythmMaker(RhythmMaker):
 
     ### SPECIAL METHODS ###
 
-    def __call__(self, divisions, seeds=None):
+    def __call__(self, divisions, rotation=None):
         r'''Calls skip rhythm-maker on `divisions`.
 
         Returns list of selections.
@@ -67,7 +69,7 @@ class SkipRhythmMaker(RhythmMaker):
         return RhythmMaker.__call__(
             self,
             divisions,
-            seeds=seeds,
+            rotation=rotation,
             )
 
     def __format__(self, format_specification=''):
@@ -89,10 +91,11 @@ class SkipRhythmMaker(RhythmMaker):
 
     ### PRIVATE METHODS ###
 
-    def _make_music(self, divisions, seeds):
+    def _make_music(self, divisions, rotation):
         result = []
         for division in divisions:
-            assert isinstance(division, durationtools.Division), repr(division)
+            prototype = mathtools.NonreducedFraction
+            assert isinstance(division, prototype), repr(division)
             written_duration = durationtools.Duration(1)
             multiplied_duration = division
             skip = scoretools.make_skips(
@@ -106,7 +109,7 @@ class SkipRhythmMaker(RhythmMaker):
     def tuplet_spelling_specifier(self):
         r'''Gets tuplet spelling specifier of skip rhythm-maker.
 
-        ..  note:: note yet implemented.
+        ..  note:: not yet implemented.
 
         Returns tuplet spelling specifier or none.
         '''

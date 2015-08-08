@@ -7,7 +7,8 @@ class BeamSpecifier(AbjadValueObject):
 
     ..  container:: example
 
-        Beam notes in each cell together but do not beam between cells:
+        **Example 1.** Beams notes in each cell together but does not beam 
+        between cells:
 
         ::
 
@@ -18,7 +19,7 @@ class BeamSpecifier(AbjadValueObject):
 
     ..  container:: example
 
-        Beam everything:
+        **Example 2.** Beams everything:
 
         ::
 
@@ -29,13 +30,13 @@ class BeamSpecifier(AbjadValueObject):
 
     ..  container:: example
 
-        Beam nothing:
+        **Example 3.** Beams nothing:
 
         ::
 
             >>> specifier = rhythmmakertools.BeamSpecifier(
-            ...     beam_each_division=True,
-            ...     beam_divisions_together=True
+            ...     beam_each_division=False,
+            ...     beam_divisions_together=False
             ...     )
 
     Beam specifiers are immutable.
@@ -43,9 +44,12 @@ class BeamSpecifier(AbjadValueObject):
 
     ### CLASS VARIABLES ###
 
+    __documentation_section__ = 'Specifiers'
+
     __slots__ = (
         '_beam_divisions_together',
         '_beam_each_division',
+        '_use_feather_beams',
         )
 
     ### INITIALIZER ###
@@ -54,11 +58,14 @@ class BeamSpecifier(AbjadValueObject):
         self,
         beam_each_division=True,
         beam_divisions_together=False,
+        use_feather_beams=False,
         ):
         assert isinstance(beam_each_division, bool)
         assert isinstance(beam_divisions_together, bool)
+        assert isinstance(use_feather_beams, bool)
         self._beam_each_division = beam_each_division
         self._beam_divisions_together = beam_divisions_together
+        self._use_feather_beams = use_feather_beams
 
     ### SPECIAL METHODS ###
 
@@ -109,6 +116,7 @@ class BeamSpecifier(AbjadValueObject):
                 rhythmmakertools.BeamSpecifier(
                     beam_each_division=True,
                     beam_divisions_together=False,
+                    use_feather_beams=False,
                     )
 
         Returns string.
@@ -121,7 +129,7 @@ class BeamSpecifier(AbjadValueObject):
     def __hash__(self):
         r'''Hashes beam specifier.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''
@@ -135,37 +143,17 @@ class BeamSpecifier(AbjadValueObject):
             ::
 
                 >>> rhythmmakertools.BeamSpecifier()
-                BeamSpecifier(beam_each_division=True, beam_divisions_together=False)
+                BeamSpecifier(beam_each_division=True, beam_divisions_together=False, use_feather_beams=False)
 
         Returns string.
         '''
         return AbjadValueObject.__repr__(self)
 
-    ### PRIVATE PROPERTIES ###
-
-    @property
-    def _attribute_manifest(self):
-        from abjad.tools import systemtools
-        from ide import idetools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='beam_divisions_together',
-                command='bdt',
-                editor=idetools.getters.get_boolean,
-                ),
-            systemtools.AttributeDetail(
-                name='beam_each_division',
-                command='bed',
-                editor=idetools.getters.get_boolean,
-                ),
-            )
-
     ### PUBLIC PROPERTIES ###
 
     @property
     def beam_divisions_together(self):
-        r'''Is true when target should beam cells together.
-        Otherwise false.
+        r'''Is true when divisions should beam together. Otherwise false.
 
         ..  container:: example
 
@@ -177,15 +165,16 @@ class BeamSpecifier(AbjadValueObject):
 
         Defaults to false.
 
-        Returns boolean.
+        Set to true or false.
+
+        Returns true or false.
         '''
         return self._beam_divisions_together
 
 
     @property
     def beam_each_division(self):
-        r'''Is true when target should beam each cell.
-        Otherwise false.
+        r'''Is true when each division should be beamed. Otherwise false.
 
         ..  container:: example
 
@@ -197,6 +186,28 @@ class BeamSpecifier(AbjadValueObject):
 
         Defaults to true.
 
-        Returns boolean.
+        Set to true or false.
+
+        Returns true or false.
         '''
         return self._beam_each_division
+
+    @property
+    def use_feather_beams(self):
+        r'''Is true when multiple beams should feather. Otherwise false.
+
+        ..  container:: example
+
+            ::
+
+                >>> specifier = rhythmmakertools.BeamSpecifier()
+                >>> specifier.use_feather_beams
+                False
+
+        Defaults to false.
+
+        Set to true or false.
+
+        Returns true or false.
+        '''
+        return self._use_feather_beams

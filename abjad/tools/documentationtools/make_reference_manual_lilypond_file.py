@@ -4,7 +4,7 @@ from abjad.tools.topleveltools import override
 from abjad.tools.topleveltools import set_
 
 
-def make_reference_manual_lilypond_file(music=None):
+def make_reference_manual_lilypond_file(music=None, **kwargs):
     r'''Makes reference manual LilyPond file.
 
         >>> score = Score([Staff('c d e f')])
@@ -14,10 +14,15 @@ def make_reference_manual_lilypond_file(music=None):
     ..  doctest::
 
         >>> print(format(lilypond_file)) # doctest: +SKIP
-
-        \version "2.15.37"
+        \version "2.19.15"
         \language "english"
-
+        <BLANKLINE>
+        #(set-global-staff-size 12)
+        <BLANKLINE>
+        \header {
+            tagline = \markup {}
+        }
+        <BLANKLINE>
         \layout {
             indent = #0
             ragged-right = ##t
@@ -32,15 +37,15 @@ def make_reference_manual_lilypond_file(music=None):
                 \override TupletBracket #'padding = #2
                 \override TupletBracket #'springs-and-rods = #ly:spanner::set-spacing-rods
                 \override TupletNumber #'text = #tuplet-number::calc-fraction-text
-                proportionalNotationDuration = #(ly:make-moment 1 32)
-                tupletFullLength = True
+                proportionalNotationDuration = #(ly:make-moment 1 24)
+                tupletFullLength = ##t
             }
         }
-
+        <BLANKLINE>
         \paper {
-            left-margin = 1.0\in
+            left-margin = 1\in
         }
-
+        <BLANKLINE>
         \score {
             \new Score <<
                 \new Staff {
@@ -57,20 +62,34 @@ def make_reference_manual_lilypond_file(music=None):
     from abjad.tools import lilypondfiletools
     from abjad.tools import schemetools
 
-    assert '__illustrate__' in dir(music)
-    lilypond_file = music.__illustrate__()
+    assert hasattr(music, '__illustrate__')
+    lilypond_file = music.__illustrate__(**kwargs)
 
-    # header
-    lilypond_file.header_block.tagline = markuptools.Markup('""')
-
-    # layout
-    lilypond_file.layout_block.indent = 0
-    lilypond_file.line_width = lilypondfiletools.LilyPondDimension(6, 'in')
-    lilypond_file.layout_block.ragged_right = True
+    blocks = [_ for _ in lilypond_file.items
+        if isinstance(_, lilypondfiletools.Block)
+        ]
+    header_block, layout_block, paper_block = None, None, None
+    for block in blocks:
+        if block.name == 'header':
+            header_block = block
+        elif block.name == 'layout':
+            layout_block = block
+        elif block.name == 'paper':
+            paper_block = block
 
     # paper
-    lilypond_file.paper_block.left_margin = \
-        lilypondfiletools.LilyPondDimension(1, 'in')
+    if paper_block is None:
+        paper_block = lilypondfiletools.Block(name='paper')
+        lilypond_file.items.insert(0, paper_block)
+    paper_block.left_margin = lilypondfiletools.LilyPondDimension(1, 'in')
+
+    # layout
+    if layout_block is None:
+        layout_block = lilypondfiletools.Block(name='layout')
+        lilypond_file.items.insert(0, layout_block)
+    lilypond_file.line_width = lilypondfiletools.LilyPondDimension(6, 'in')
+    layout_block.indent = 0
+    layout_block.ragged_right = True
 
     # score context
     context_block = lilypondfiletools.ContextBlock(
@@ -87,10 +106,16 @@ def make_reference_manual_lilypond_file(music=None):
     override(context_block).tuplet_bracket.minimum_length = 3
     scheme = schemetools.Scheme('tuplet-number::calc-fraction-text')
     override(context_block).tuplet_number.text = scheme
-    moment = schemetools.SchemeMoment((1, 32))
+    moment = schemetools.SchemeMoment((1, 24))
     set_(context_block).proportionalNotationDuration = moment
     set_(context_block).tupletFullLength = True
-    lilypond_file.layout_block.items.append(context_block)
+    layout_block.items.append(context_block)
+
+    # header
+    if header_block is None:
+        header_block = lilypondfiletools.Block(name='header')
+        lilypond_file.items.insert(0, header_block)
+    header_block.tagline = markuptools.Markup('""')
 
     # etc
     lilypond_file.file_initial_system_comments[:] = []

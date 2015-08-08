@@ -1,6 +1,5 @@
 # -*-encoding: utf-8 -*-
 import copy
-import types
 from abjad.tools import durationtools
 from abjad.tools import scoretools
 from abjad.tools import selectiontools
@@ -27,6 +26,7 @@ class Spanner(AbjadObject):
         '_indicator_expressions',
         '_lilypond_grob_name_manager',
         '_lilypond_setting_name_manager',
+        '_name',
         )
 
     ### INITIALIZER ###
@@ -34,6 +34,7 @@ class Spanner(AbjadObject):
     def __init__(
         self,
         overrides=None,
+        name=None,
         ):
         overrides = overrides or {}
         self._components = []
@@ -41,6 +42,9 @@ class Spanner(AbjadObject):
         self._apply_overrides(overrides)
         self._indicator_expressions = []
         self._lilypond_setting_name_manager = None
+        if name is not None:
+            name = str(name)
+        self._name = name
 
     ### SPECIAL METHODS ###
 
@@ -69,6 +73,7 @@ class Spanner(AbjadObject):
         if getattr(self, '_lilypond_setting_name_manager', None) is not None:
             new._lilypond_setting_name_manager = copy.copy(set_(self))
         self._copy_keyword_args(new)
+        new._name = self.name
         return new
 
     def __getitem__(self, expr):
@@ -76,6 +81,8 @@ class Spanner(AbjadObject):
 
         Returns component.
         '''
+        if isinstance(expr, slice):
+            return selectiontools.Selection(self._components.__getitem__(expr))
         return self._components.__getitem__(expr)
 
     def __getnewargs__(self):
@@ -190,19 +197,18 @@ class Spanner(AbjadObject):
         self._components.insert(0, component)
 
     def _apply_overrides(self, overrides):
-        from abjad.tools import markuptools
-        from abjad.tools import schemetools
+        import abjad
+        namespace = abjad.__dict__.copy()
         manager = override(self)
         for key, value in overrides.items():
             grob_name, attribute = key.split('__', 1)
             grob_manager = getattr(manager, grob_name)
             if isinstance(value, str):
                 if 'markuptools' in value or 'schemetools' in value:
-                    value = eval(value)
+                    value = eval(value, namespace, namespace)
             setattr(grob_manager, attribute, value)
 
     def _attach(self, components):
-        from abjad.tools import scoretools
         from abjad.tools import selectiontools
         assert not self, repr(self)
         if isinstance(components, scoretools.Component):
@@ -222,6 +228,11 @@ class Spanner(AbjadObject):
         r'''Not composer-safe.
         '''
         component._spanners.remove(self)
+
+    def _constrain_contiguity(self):
+        r'''Not composer-safe.
+        '''
+        self._contiguity_constraint = 'logical_voice'
 
     def _copy(self, components):
         r'''Returns copy of spanner with `components`.
@@ -246,16 +257,20 @@ class Spanner(AbjadObject):
         self._sever_all_components()
 
     def _extend(self, components):
-        component_input = self[-1:]
+        component_input = list(self[-1:])
         component_input.extend(components)
         if self._contiguity_constraint == 'logical voice':
-            assert Selection._all_are_contiguous_components_in_same_logical_voice(
-                component_input), repr(component_input)
+            if not Selection._all_are_contiguous_components_in_same_logical_voice(
+                component_input):
+                message = 'must be contiguous components'
+                message += ' in same logical voice: {!r}.'
+                message = message.format(component_input)
+                raise Exception(message)
         for component in components:
             self._append(component)
 
     def _extend_left(self, components):
-        component_input = components + self[:1]
+        component_input = components + list(self[:1])
         assert Selection._all_are_contiguous_components_in_same_logical_voice(
             component_input)
         for component in reversed(components):
@@ -374,7 +389,6 @@ class Spanner(AbjadObject):
         return matching_indicators
 
     def _get_leaves(self):
-        from abjad.tools import selectiontools
         result = []
         for component in self._components:
             for node in iterate(component).depth_first():
@@ -418,16 +432,17 @@ class Spanner(AbjadObject):
         raise IndexError
 
     def _get_timespan(self, in_seconds=False):
+        from abjad.tools import durationtools
         if len(self):
             start_offset = \
                 self[0]._get_timespan(in_seconds=in_seconds).start_offset
         else:
-            start_offset = Duration(0)
+            start_offset = durationtools.Duration(0)
         if len(self):
             stop_offset = \
                 self[-1]._get_timespan(in_seconds=in_seconds).stop_offset
         else:
-            stop_offset = Duration(0)
+            stop_offset = durationtools.Duration(0)
         return timespantools.Timespan(
             start_offset=start_offset, stop_offset=stop_offset)
 
@@ -575,6 +590,11 @@ class Spanner(AbjadObject):
         '''
         component._spanners.add(self)
 
+    def _unconstrain_contiguity(self):
+        r'''Not composer-safe.
+        '''
+        self._contiguity_constraint = None
+
     ### PUBLIC PROPERTIES ###
 
     @property
@@ -585,6 +605,14 @@ class Spanner(AbjadObject):
         '''
         from abjad.tools import selectiontools
         return selectiontools.Selection(self._components[:])
+
+    @property
+    def name(self):
+        r'''Gets spanner name.
+
+        Returns string.
+        '''
+        return self._name
 
     @property
     def overrides(self):

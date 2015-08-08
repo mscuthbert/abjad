@@ -166,6 +166,8 @@ class InspectionAgent(abctools.AbjadObject):
     def get_effective(
         self,
         prototype=None,
+        unwrap=True,
+        n=0,
         ):
         r'''Gets effective indicator that matches `prototype`
         and governs client.
@@ -174,6 +176,8 @@ class InspectionAgent(abctools.AbjadObject):
         '''
         return self._client._get_effective(
             prototype=prototype,
+            unwrap=unwrap,
+            n=n,
             )
 
     def get_effective_staff(self):
@@ -579,6 +583,7 @@ class InspectionAgent(abctools.AbjadObject):
     def get_spanner(
         self,
         prototype=None,
+        in_parentage=False,
         ):
         r'''Gets exactly one spanner of `prototype` attached to
         client.
@@ -590,11 +595,13 @@ class InspectionAgent(abctools.AbjadObject):
         '''
         return self._client._get_spanner(
             prototype=prototype,
+            in_parentage=in_parentage,
             )
 
     def get_spanners(
         self,
         prototype=None,
+        in_parentage=False,
         ):
         r'''Gets spanners attached to client.
 
@@ -602,6 +609,7 @@ class InspectionAgent(abctools.AbjadObject):
         '''
         return self._client._get_spanners(
             prototype=prototype,
+            in_parentage=in_parentage,
             )
 
     def get_timespan(self,
@@ -654,6 +662,21 @@ class InspectionAgent(abctools.AbjadObject):
         Returns boolean.
         '''
         return self._client._has_indicator(prototype=prototype)
+
+    def has_spanner(
+        self,
+        prototype=None,
+        in_parentage=False,
+        ):
+        r'''Is true when client has one or more
+        spanners that match `prototype`. Otherwise false.
+
+        Returns boolean.
+        '''
+        return self._client._has_spanner(
+            prototype=prototype,
+            in_parentage=in_parentage,
+            )
 
     def is_bar_line_crossing(self):
         r'''Is true when client crosses bar line.
@@ -823,6 +846,7 @@ class InspectionAgent(abctools.AbjadObject):
 
                 >>> print(result)
                 1 / 4 beamed quarter notes
+                0 / 1 conflicting clefs
                 0 / 1 discontiguous spanners
                 0 / 5 duplicate ids
                 0 / 0 intermarked hairpins

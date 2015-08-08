@@ -1,5 +1,4 @@
 # -*- encoding: utf-8 -*-
-import fractions
 from abjad.tools import durationtools
 from abjad.tools.timespantools.TimeRelation import TimeRelation
 
@@ -37,6 +36,15 @@ class OffsetTimespanTimeRelation(TimeRelation):
 
     Offset / timespan time relations are immutable.
     '''
+
+    ### CLASS VARIABLES ###
+
+    __documentation_section__ = 'Time relations'
+
+    __slots__ = (
+        '_offset',
+        '_timespan',
+        )
 
     ### INITIALIZER ###
 
@@ -133,7 +141,7 @@ class OffsetTimespanTimeRelation(TimeRelation):
     def __hash__(self):
         r'''Hashes time relation.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''

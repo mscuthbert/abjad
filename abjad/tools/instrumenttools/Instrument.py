@@ -137,52 +137,6 @@ class Instrument(AbjadObject):
 
     ### PRIVATE PROPERTIES ###
 
-    @property
-    def _attribute_manifest(self):
-        from abjad.tools import indicatortools
-        from abjad.tools import systemtools
-        from ide import idetools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='allowable_clefs',
-                display_string='clefs',
-                command='cf',
-                editor=indicatortools.ClefInventory,
-                ),
-            systemtools.AttributeDetail(
-                name='instrument_name',
-                command='in',
-                editor=idetools.getters.get_string,
-                ),
-            systemtools.AttributeDetail(
-                name='instrument_name_markup',
-                command='im',
-                editor=idetools.getters.get_markup,
-                ),
-            systemtools.AttributeDetail(
-                name='pitch_range',
-                display_string='range',
-                command='rg',
-                editor=idetools.getters.get_pitch_range_string,
-                ),
-            systemtools.AttributeDetail(
-                name='short_instrument_name',
-                command='sn',
-                editor=idetools.getters.get_string,
-                ),
-            systemtools.AttributeDetail(
-                name='short_instrument_name_markup',
-                command='sm',
-                editor=idetools.getters.get_markup,
-                ),
-            systemtools.AttributeDetail(
-                name='sounding_pitch_of_written_middle_c',
-                display_string='sounding pitch of written middle C',
-                command='sp',
-                editor=idetools.getters.get_named_pitch,
-                ),
-            )
-
     @staticmethod
     def _default_instrument_name_to_instrument_class(default_instrument_name):
         for instrument_class in Instrument._list_instruments():
@@ -241,20 +195,22 @@ class Instrument(AbjadObject):
             return self._performer_names[:]
 
     def _initialize_default_name_markups(self):
-        if self.instrument_name:
-            string = self.instrument_name
-            string = stringtools.capitalize_start(string)
-            markup = markuptools.Markup(contents=string)
-            self._instrument_name_markup = markup
-        else:
-            self._instrument_name_markup = None
-        if self.short_instrument_name:
-            string = self.short_instrument_name
-            string = stringtools.capitalize_start(string)
-            markup = markuptools.Markup(contents=string)
-            self._short_instrument_name_markup = markup
-        else:
-            self._short_instrument_name_markup = None
+        if self._instrument_name_markup is None:
+            if self.instrument_name:
+                string = self.instrument_name
+                string = stringtools.capitalize_start(string)
+                markup = markuptools.Markup(contents=string)
+                self._instrument_name_markup = markup
+            else:
+                self._instrument_name_markup = None
+        if self._short_instrument_name_markup is None:
+            if self.short_instrument_name:
+                string = self.short_instrument_name
+                string = stringtools.capitalize_start(string)
+                markup = markuptools.Markup(contents=string)
+                self._short_instrument_name_markup = markup
+            else:
+                self._short_instrument_name_markup = None
 
     @classmethod
     def _list_instrument_names(cls):

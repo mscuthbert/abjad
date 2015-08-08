@@ -1,11 +1,17 @@
 # -*- encoding: utf-8 -*-
+from __future__ import print_function
 import os
 import types
+from abjad.tools.abctools import AbjadObject
 
 
-class ImportManager(object):
+class ImportManager(AbjadObject):
     r'''Imports structured packages.
     '''
+
+    ### CLASS VARIABLES ###
+
+    __documentation_section__ = 'Managers'
 
     ### PRIVATE METHODS ###
 
@@ -20,12 +26,16 @@ class ImportManager(object):
         for key, value in list(vars(mod).items()):
             if not key.startswith('_'):
                 # handle public function decorated with @require
-                if getattr(value, 'func_closure', None):
-                    module_name = getattr(value.func_closure[1].cell_contents,
-                        '__module__', None)
-                # handle plain old function
-                else:
-                    module_name = getattr(value, '__module__', None)
+                module_name = None
+                try:
+                    if getattr(value, 'func_closure', None):
+                        module_name = getattr(value.func_closure[1].cell_contents,
+                            '__module__', None)
+                    # handle plain old function
+                    else:
+                        module_name = getattr(value, '__module__', None)
+                except:
+                    pass
                 if module_name == module_file:
                     result.append(value)
         return result
@@ -78,6 +88,7 @@ class ImportManager(object):
         This is the custom function that all AbjadIDE-managed scores may use to
         import public materials on startup.
         '''
+        prefix = 'definition'
         package_path = ImportManager._split_package_path(path)
         for name in os.listdir(path):
             if not os.path.isdir(os.path.join(path, name)):
@@ -94,14 +105,14 @@ class ImportManager(object):
             output_file_path = os.path.join(
                 path,
                 name,
-                'output.py',
+                '{}.py'.format(prefix),
                 )
             if not os.path.exists(output_file_path):
                 continue
             output_module_path = '.'.join((
                 package_path,
                 name,
-                'output',
+                prefix,
                 ))
             output_module = __import__(output_module_path, fromlist=['*'])
             if name in dir(output_module):
@@ -157,6 +168,8 @@ class ImportManager(object):
 
         Does not inspect lower levels of path.
         '''
+        if isinstance(namespace, types.ModuleType):
+            namespace = namespace.__dict__
         package_path = ImportManager._split_package_path(path)
         for element in os.listdir(path):
             if os.path.isfile(os.path.join(path, element)):
@@ -175,7 +188,7 @@ class ImportManager(object):
                             name = f.__name__
                         namespace[name] = f
             elif os.path.isdir(os.path.join(path, element)):
-                if not element in ('.svn', '.git', 'test', '__pycache__'):
+                if element not in ('.svn', '.git', 'test', '__pycache__'):
                     initializer_file_path = os.path.join(
                         path,
                         element,

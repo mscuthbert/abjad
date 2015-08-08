@@ -1,8 +1,7 @@
 # -*- encoding: utf-8 -*-
 import collections
-import copy
-import math
 from abjad.tools import durationtools
+from abjad.tools import markuptools
 from abjad.tools import sequencetools
 from abjad.tools.datastructuretools.TypedList import TypedList
 from abjad.tools.topleveltools import new
@@ -13,7 +12,7 @@ class TimespanInventory(TypedList):
 
     ..  container:: example
 
-        **Example 1:**
+        **Example 1.** Contiguous timespan inventory:
 
         ::
 
@@ -43,16 +42,22 @@ class TimespanInventory(TypedList):
                     ]
                 )
 
+        ::
+
+            >>> show(timespan_inventory_1, scale=0.5) # doctest: +SKIP
+
     ..  container:: example
 
-        **Example 2:**
+        **Example 2:** Overlapping timespan inventory:
 
         ::
 
             >>> timespan_inventory_2 = timespantools.TimespanInventory([
-            ...     timespantools.Timespan(0, 10),
-            ...     timespantools.Timespan(3, 6),
+            ...     timespantools.Timespan(0, 16),
+            ...     timespantools.Timespan(5, 12),
+            ...     timespantools.Timespan(-2, 8),
             ...     timespantools.Timespan(15, 20),
+            ...     timespantools.Timespan(24, 30),
             ...     ])
 
         ::
@@ -62,18 +67,30 @@ class TimespanInventory(TypedList):
                 [
                     timespantools.Timespan(
                         start_offset=durationtools.Offset(0, 1),
-                        stop_offset=durationtools.Offset(10, 1),
+                        stop_offset=durationtools.Offset(16, 1),
                         ),
                     timespantools.Timespan(
-                        start_offset=durationtools.Offset(3, 1),
-                        stop_offset=durationtools.Offset(6, 1),
+                        start_offset=durationtools.Offset(5, 1),
+                        stop_offset=durationtools.Offset(12, 1),
+                        ),
+                    timespantools.Timespan(
+                        start_offset=durationtools.Offset(-2, 1),
+                        stop_offset=durationtools.Offset(8, 1),
                         ),
                     timespantools.Timespan(
                         start_offset=durationtools.Offset(15, 1),
                         stop_offset=durationtools.Offset(20, 1),
                         ),
+                    timespantools.Timespan(
+                        start_offset=durationtools.Offset(24, 1),
+                        stop_offset=durationtools.Offset(30, 1),
+                        ),
                     ]
                 )
+
+        ::
+
+            >>> show(timespan_inventory_2, scale=0.5) # doctest: +SKIP
 
     ..  container:: example
 
@@ -94,6 +111,8 @@ class TimespanInventory(TypedList):
     '''
 
     ### CLASS VARIABLES ###
+
+    __documentation_section__ = 'Timespans'
 
     __slots__ = ()
 
@@ -143,6 +162,241 @@ class TimespanInventory(TypedList):
             new_timespans.extend(result)
         self[:] = sorted(new_timespans)
         return self
+
+    def __illustrate__(self, key=None, range_=None, sortkey=None, scale=None):
+        r'''Illustrates timespan inventory.
+
+        ..  container:: example
+
+            ::
+
+                >>> timespan_inventory = timespantools.TimespanInventory([
+                ...     timespantools.Timespan(0, 16),
+                ...     timespantools.Timespan(5, 12),
+                ...     timespantools.Timespan(-2, 8),
+                ...     ])
+                >>> timespan_operand = timespantools.Timespan(6, 10)
+                >>> timespan_inventory = timespan_inventory - timespan_operand
+                >>> show(timespan_inventory, scale=0.5) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> illustration = timespan_inventory.__illustrate__()
+                >>> print(format(illustration))  # doctest: +SKIP
+                % ...
+                <BLANKLINE>
+                \version "2.19.17"
+                \language "english"
+                <BLANKLINE>
+                \header {
+                    tagline = \markup {}
+                }
+                <BLANKLINE>
+                \layout {}
+                <BLANKLINE>
+                \paper {}
+                <BLANKLINE>
+                \markup {
+                    \column
+                        {
+                            \combine
+                                \combine
+                                    \combine
+                                        \combine
+                                            \combine
+                                                \combine
+                                                    \translate
+                                                        #'(1.0... . 1)
+                                                        \sans
+                                                            \fontsize
+                                                                #-3
+                                                                \center-align
+                                                                    \fraction
+                                                                        -2
+                                                                        1
+                                                    \translate
+                                                        #'(17.6... . 1)
+                                                        \sans
+                                                            \fontsize
+                                                                #-3
+                                                                \center-align
+                                                                    \fraction
+                                                                        0
+                                                                        1
+                                                \translate
+                                                    #'(59.3... . 1)
+                                                    \sans
+                                                        \fontsize
+                                                            #-3
+                                                            \center-align
+                                                                \fraction
+                                                                    5
+                                                                    1
+                                            \translate
+                                                #'(67.6... . 1)
+                                                \sans
+                                                    \fontsize
+                                                        #-3
+                                                        \center-align
+                                                            \fraction
+                                                                6
+                                                                1
+                                        \translate
+                                            #'(101.0... . 1)
+                                            \sans
+                                                \fontsize
+                                                    #-3
+                                                    \center-align
+                                                        \fraction
+                                                            10
+                                                            1
+                                    \translate
+                                        #'(117.6... . 1)
+                                        \sans
+                                            \fontsize
+                                                #-3
+                                                \center-align
+                                                    \fraction
+                                                        12
+                                                        1
+                                \translate
+                                    #'(151.0... . 1)
+                                    \sans
+                                        \fontsize
+                                            #-3
+                                            \center-align
+                                                \fraction
+                                                    16
+                                                    1
+                            \pad-to-box
+                                #'(0 . 115.6...)
+                                #'(0 . 8.5...)
+                                \postscript
+                                    #"
+                                    0.2... setlinewidth
+                                    1 6.5... moveto
+                                    67.6... 6.5 lineto
+                                    stroke
+                                    1 7.2... moveto
+                                    1 5.7... lineto
+                                    stroke
+                                    67.6... 7.25 moveto
+                                    67.6... 5.75 lineto
+                                    stroke
+                                    17.6... 3.5 moveto
+                                    67.6... 3.5 lineto
+                                    stroke
+                                    17.6... 4.25 moveto
+                                    17.6... 2.75 lineto
+                                    stroke
+                                    67.6... 4.25 moveto
+                                    67.6... 2.75 lineto
+                                    stroke
+                                    101.0... 3.5 moveto
+                                    151 3.5... lineto
+                                    stroke
+                                    101.0... 4.25 moveto
+                                    101.0... 2.75 lineto
+                                    stroke
+                                    151 4.2... moveto
+                                    151 2.7... lineto
+                                    stroke
+                                    59.3... 0.5 moveto
+                                    67.6... 0.5 lineto
+                                    stroke
+                                    59.3... 1.25 moveto
+                                    59.3... -0.25 lineto
+                                    stroke
+                                    67.6... 1.25 moveto
+                                    67.6... -0.25 lineto
+                                    stroke
+                                    101.0... 0.5 moveto
+                                    117.6... 0.5 lineto
+                                    stroke
+                                    101.0... 1.25 moveto
+                                    101.0... -0.25 lineto
+                                    stroke
+                                    117.6... 1.25 moveto
+                                    117.6... -0.25 lineto
+                                    stroke
+                                    0.1... setlinewidth
+                                    [ 0.1... 0.2 ] 0 setdash
+                                    1 8.5... moveto
+                                    1 7 lineto
+                                    stroke
+                                    17.6... 8.5 moveto
+                                    17.6... 4 lineto
+                                    stroke
+                                    59.3... 8.5 moveto
+                                    59.3... 1 lineto
+                                    stroke
+                                    67.6... 8.5 moveto
+                                    67.6... 1 lineto
+                                    stroke
+                                    101.0... 8.5 moveto
+                                    101.0... 1 lineto
+                                    stroke
+                                    117.6... 8.5 moveto
+                                    117.6... 1 lineto
+                                    stroke
+                                    151 8.5... moveto
+                                    151 4 lineto
+                                    stroke
+                                    "
+                        }
+                    }
+
+        Returns LilyPond file.
+        '''
+        if not self:
+            return markuptools.Markup.null().__illustrate__()
+        if range_ is not None:
+            minimum, maximum = range_
+        else:
+            minimum, maximum = self.start_offset, self.stop_offset
+        if scale is None:
+            scale = 1.
+        assert 0 < scale
+        minimum = float(durationtools.Offset(minimum))
+        maximum = float(durationtools.Offset(maximum))
+        postscript_scale = 150. / (maximum - minimum)
+        postscript_scale *= float(scale)
+        postscript_x_offset = (minimum * postscript_scale) - 1
+        if key is None:
+            markup = self._make_timespan_inventory_markup(
+                self,
+                postscript_x_offset,
+                postscript_scale,
+                sortkey=sortkey,
+                )
+        else:
+            inventories = {}
+            for timespan in self:
+                value = getattr(timespan, key)
+                if value not in inventories:
+                    inventories[value] = type(self)()
+                inventories[value].append(timespan)
+            markups = []
+            for i, item in enumerate(sorted(inventories.items())):
+                value, timespans = item
+                timespans.sort()
+                if 0 < i:
+                    vspace_markup = markuptools.Markup.vspace(0.5)
+                    markups.append(vspace_markup)
+                value_markup = markuptools.Markup('{}:'.format(value))
+                value_markup = value_markup.line().sans().fontsize(-1)
+                markups.append(value_markup)
+                vspace_markup = markuptools.Markup.vspace(0.5)
+                markups.append(vspace_markup)
+                timespan_markup = self._make_timespan_inventory_markup(
+                    timespans,
+                    postscript_x_offset,
+                    postscript_scale,
+                    sortkey=sortkey,
+                    )
+                markups.append(timespan_markup)
+            markup = markuptools.Markup.left_column(markups)
+        return markup.__illustrate__()
 
     def __sub__(self, timespan):
         r'''Delete material that intersects `timespan`:
@@ -207,6 +461,80 @@ class TimespanInventory(TypedList):
         from abjad.tools import timespantools
         start_offset, stop_offset = self._get_offsets(expr)
         return timespantools.Timespan(start_offset, stop_offset)
+
+    @staticmethod
+    def _make_timespan_inventory_markup(
+        timespan_inventory,
+        postscript_x_offset,
+        postscript_scale,
+        draw_offsets=True,
+        sortkey=None,
+        ):
+        exploded_inventories = []
+        if not sortkey:
+            exploded_inventories.extend(timespan_inventory.explode())
+        else:
+            sorted_inventories = {}
+            for timespan in timespan_inventory:
+                value = getattr(timespan, sortkey)
+                if value not in sorted_inventories:
+                    sorted_inventories[value] = TimespanInventory()
+                sorted_inventories[value].append(timespan)
+            for key, inventory in sorted(sorted_inventories.items()):
+                exploded_inventories.extend(inventory.explode())
+        ps = markuptools.Postscript()
+        ps = ps.setlinewidth(0.2)
+        offset_mapping = {}
+        height = ((len(exploded_inventories) - 1) * 3) + 1
+        for level, inventory in enumerate(exploded_inventories, 0):
+            postscript_y_offset = height - (level * 3) - 0.5
+            for timespan in inventory:
+                offset_mapping[timespan.start_offset] = level
+                offset_mapping[timespan.stop_offset] = level
+                ps += timespan._as_postscript(
+                    postscript_x_offset,
+                    postscript_y_offset,
+                    postscript_scale,
+                    )
+        if not draw_offsets:
+            markup = markuptools.Markup.postscript(ps)
+            return markup
+        ps = ps.setlinewidth(0.1)
+        ps = ps.setdash([0.1, 0.2])
+        for offset in sorted(offset_mapping):
+            level = offset_mapping[offset]
+            x_offset = (float(offset) * postscript_scale)
+            x_offset -= postscript_x_offset
+            ps = ps.moveto(x_offset, height + 1.5)
+            ps = ps.lineto(x_offset, height - (level * 3))
+            ps = ps.stroke()
+        ps = ps.moveto(0, 0)
+        ps = ps.setgray(0.99)
+        ps = ps.rlineto(0, 0.01)
+        ps = ps.stroke()
+        x_extent = float(timespan_inventory.stop_offset)
+        x_extent *= postscript_scale
+        x_extent += postscript_x_offset
+        x_extent = (0, x_extent)
+        y_extent = (0, height + 1.5)
+        lines_markup = markuptools.Markup.postscript(ps)
+        lines_markup = lines_markup.pad_to_box(x_extent, y_extent)
+        fraction_markups = []
+        for offset in sorted(offset_mapping):
+            offset = durationtools.Multiplier(offset)
+            numerator, denominator = offset.numerator, offset.denominator
+            fraction = markuptools.Markup.fraction(numerator, denominator)
+            fraction = fraction.center_align().fontsize(-3).sans()
+            x_translation = (float(offset) * postscript_scale)
+            x_translation -= postscript_x_offset
+            fraction = fraction.translate((x_translation, 1))
+            fraction_markups.append(fraction)
+        fraction_markup = fraction_markups[0]
+        for markup in fraction_markups[1:]:
+            fraction_markup = markuptools.Markup.combine(
+                fraction_markup, markup)
+        markup = markuptools.Markup.column([fraction_markup, lines_markup])
+        return markup
 
     ### PUBLIC PROPERTIES ###
 
@@ -318,7 +646,7 @@ class TimespanInventory(TypedList):
         ::
 
             >>> timespan_inventory_2.axis
-            Offset(10, 1)
+            Offset(14, 1)
 
         None when empty:
 
@@ -344,7 +672,7 @@ class TimespanInventory(TypedList):
         ::
 
             >>> timespan_inventory_2.duration
-            Duration(20, 1)
+            Duration(32, 1)
 
         Zero when empty:
 
@@ -418,7 +746,7 @@ class TimespanInventory(TypedList):
         ::
 
             >>> timespan_inventory_2.start_offset
-            Offset(0, 1)
+            Offset(-2, 1)
 
         Negative infinity when empty:
 
@@ -447,7 +775,7 @@ class TimespanInventory(TypedList):
         ::
 
             >>> timespan_inventory_2.stop_offset
-            Offset(20, 1)
+            Offset(30, 1)
 
         Infinity when empty:
 
@@ -475,7 +803,7 @@ class TimespanInventory(TypedList):
         ::
 
             >>> timespan_inventory_2.timespan
-            Timespan(start_offset=Offset(0, 1), stop_offset=Offset(20, 1))
+            Timespan(start_offset=Offset(-2, 1), stop_offset=Offset(30, 1))
 
         ::
 
@@ -1285,15 +1613,23 @@ class TimespanInventory(TypedList):
                     [
                         timespantools.Timespan(
                             start_offset=durationtools.Offset(0, 1),
-                            stop_offset=durationtools.Offset(10, 1),
+                            stop_offset=durationtools.Offset(16, 1),
                             ),
                         timespantools.Timespan(
-                            start_offset=durationtools.Offset(3, 1),
-                            stop_offset=durationtools.Offset(6, 1),
+                            start_offset=durationtools.Offset(5, 1),
+                            stop_offset=durationtools.Offset(12, 1),
+                            ),
+                        timespantools.Timespan(
+                            start_offset=durationtools.Offset(-2, 1),
+                            stop_offset=durationtools.Offset(8, 1),
                             ),
                         timespantools.Timespan(
                             start_offset=durationtools.Offset(15, 1),
                             stop_offset=durationtools.Offset(20, 1),
+                            ),
+                        timespantools.Timespan(
+                            start_offset=durationtools.Offset(24, 1),
+                            stop_offset=durationtools.Offset(30, 1),
                             ),
                         ]
                     )
@@ -1304,12 +1640,16 @@ class TimespanInventory(TypedList):
                 ...     timespan_inventory_2.count_offsets().items()):
                 ...     offset, count
                 ...
+                (Offset(-2, 1), 1)
                 (Offset(0, 1), 1)
-                (Offset(3, 1), 1)
-                (Offset(6, 1), 1)
-                (Offset(10, 1), 1)
+                (Offset(5, 1), 1)
+                (Offset(8, 1), 1)
+                (Offset(12, 1), 1)
                 (Offset(15, 1), 1)
+                (Offset(16, 1), 1)
                 (Offset(20, 1), 1)
+                (Offset(24, 1), 1)
+                (Offset(30, 1), 1)
 
         ..  container:: example
 
@@ -1333,11 +1673,8 @@ class TimespanInventory(TypedList):
 
         Returns counter.
         '''
-        counter = collections.Counter()
-        for timespan in self:
-            counter[timespan.start_offset] += 1
-            counter[timespan.stop_offset] += 1
-        return counter
+        from abjad.tools import metertools
+        return metertools.OffsetCounter(self)
 
     def explode(self, inventory_count=None):
         r'''Explode timespans into inventories, avoiding overlap, and
@@ -1369,7 +1706,7 @@ class TimespanInventory(TypedList):
 
                 >>> for exploded_inventory in timespan_inventory.explode():
                 ...     print(format(exploded_inventory))
-                ... 
+                ...
                 timespantools.TimespanInventory(
                     [
                         timespantools.Timespan(
@@ -1441,7 +1778,7 @@ class TimespanInventory(TypedList):
                 >>> for exploded_inventory in timespan_inventory.explode(
                 ...     inventory_count=2):
                 ...     print(format(exploded_inventory))
-                ... 
+                ...
                 timespantools.TimespanInventory(
                     [
                         timespantools.Timespan(
@@ -1509,7 +1846,7 @@ class TimespanInventory(TypedList):
                 >>> for exploded_inventory in timespan_inventory.explode(
                 ...     inventory_count=6):
                 ...     print(format(exploded_inventory))
-                ... 
+                ...
                 timespantools.TimespanInventory(
                     [
                         timespantools.Timespan(
@@ -1789,7 +2126,7 @@ class TimespanInventory(TypedList):
 
                 >>> for inventory in timespan_inventory_1.partition():
                 ...     print(format(inventory))
-                ... 
+                ...
                 timespantools.TimespanInventory(
                     [
                         timespantools.Timespan(
@@ -1826,15 +2163,23 @@ class TimespanInventory(TypedList):
                     [
                         timespantools.Timespan(
                             start_offset=durationtools.Offset(0, 1),
-                            stop_offset=durationtools.Offset(10, 1),
+                            stop_offset=durationtools.Offset(16, 1),
                             ),
                         timespantools.Timespan(
-                            start_offset=durationtools.Offset(3, 1),
-                            stop_offset=durationtools.Offset(6, 1),
+                            start_offset=durationtools.Offset(5, 1),
+                            stop_offset=durationtools.Offset(12, 1),
+                            ),
+                        timespantools.Timespan(
+                            start_offset=durationtools.Offset(-2, 1),
+                            stop_offset=durationtools.Offset(8, 1),
                             ),
                         timespantools.Timespan(
                             start_offset=durationtools.Offset(15, 1),
                             stop_offset=durationtools.Offset(20, 1),
+                            ),
+                        timespantools.Timespan(
+                            start_offset=durationtools.Offset(24, 1),
+                            stop_offset=durationtools.Offset(30, 1),
                             ),
                         ]
                     )
@@ -1843,24 +2188,32 @@ class TimespanInventory(TypedList):
 
                 >>> for inventory in timespan_inventory_2.partition():
                 ...     print(format(inventory))
-                ... 
+                ...
                 timespantools.TimespanInventory(
                     [
                         timespantools.Timespan(
-                            start_offset=durationtools.Offset(0, 1),
-                            stop_offset=durationtools.Offset(10, 1),
+                            start_offset=durationtools.Offset(-2, 1),
+                            stop_offset=durationtools.Offset(8, 1),
                             ),
                         timespantools.Timespan(
-                            start_offset=durationtools.Offset(3, 1),
-                            stop_offset=durationtools.Offset(6, 1),
+                            start_offset=durationtools.Offset(0, 1),
+                            stop_offset=durationtools.Offset(16, 1),
+                            ),
+                        timespantools.Timespan(
+                            start_offset=durationtools.Offset(5, 1),
+                            stop_offset=durationtools.Offset(12, 1),
+                            ),
+                        timespantools.Timespan(
+                            start_offset=durationtools.Offset(15, 1),
+                            stop_offset=durationtools.Offset(20, 1),
                             ),
                         ]
                     )
                 timespantools.TimespanInventory(
                     [
                         timespantools.Timespan(
-                            start_offset=durationtools.Offset(15, 1),
-                            stop_offset=durationtools.Offset(20, 1),
+                            start_offset=durationtools.Offset(24, 1),
+                            stop_offset=durationtools.Offset(30, 1),
                             ),
                         ]
                     )
@@ -1875,7 +2228,7 @@ class TimespanInventory(TypedList):
                 >>> for inventory in timespan_inventory_1.partition(
                 ...     include_tangent_timespans=True):
                 ...     print(format(inventory))
-                ... 
+                ...
                 timespantools.TimespanInventory(
                     [
                         timespantools.Timespan(
@@ -2564,7 +2917,6 @@ class TimespanInventory(TypedList):
 
         Returns inventories.
         '''
-        from abjad.tools import timespantools
         offset = durationtools.Offset(offset)
         before_inventory = type(self)()
         during_inventory = type(self)()
@@ -2608,7 +2960,7 @@ class TimespanInventory(TypedList):
 
                 >>> for inventory in timespan_inventory.split_at_offsets(offsets):
                 ...     print(format(inventory))
-                ... 
+                ...
                 timespantools.TimespanInventory(
                     [
                         timespantools.Timespan(

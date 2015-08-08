@@ -7,6 +7,8 @@ class Arrow(LineSegment):
 
     ..  container:: example
 
+        **Example 1.** String contact position spanner:
+            
         ::
 
             >>> staff = Staff("c'4 d'4 e'4 f'4")
@@ -86,6 +88,7 @@ class Arrow(LineSegment):
 
     # must be present for copy, deepcopy, pickle
     __slots__ = (
+        '_default_scope',
         )
 
     ### INITIALIZER ###
@@ -108,6 +111,7 @@ class Arrow(LineSegment):
         style=None,
         ):
         superclass = super(Arrow, self)
+        self._default_scope = None
         superclass.__init__(
             arrow_width=arrow_width,
             dash_fraction=dash_fraction,
@@ -707,6 +711,20 @@ class Arrow(LineSegment):
         return superclass.dash_period
 
     @property
+    def default_scope(self):
+        r'''Gets default scope of arrow.
+
+        ..  container:: example
+
+            >>> arrow = indicatortools.Arrow()
+            >>> arrow.default_scope is None
+            True
+
+        Returns none.
+        '''
+        return self._default_scope
+
+    @property
     def left_broken_text(self):
         r'''Gets left broken text of arrow.
 
@@ -794,7 +812,7 @@ class Arrow(LineSegment):
                             \upright
                                 ord.
                             }
-                        c''4. \stopTextSpan
+                        c''4.
                     }
 
             Results in no text immediately after line break.
@@ -897,7 +915,7 @@ class Arrow(LineSegment):
                             \upright
                                 ord.
                             }
-                        c''4. \stopTextSpan
+                        c''4.
                     }
 
         Set to markup, boolean or none.
@@ -993,7 +1011,7 @@ class Arrow(LineSegment):
                             \upright
                                 ord.
                             }
-                        c''4. \stopTextSpan
+                        c''4.
                     }
 
             Results in arrow immediately before line break.
@@ -1087,7 +1105,7 @@ class Arrow(LineSegment):
                             \upright
                                 ord.
                             }
-                        c''4. \stopTextSpan
+                        c''4.
                     }
 
         Set to true, false or none.

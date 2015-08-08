@@ -6,6 +6,10 @@ class WellformednessManager(AbjadObject):
     r'''Wellformedness manager.
     '''
 
+    ### CLASS VARIABLES ###
+
+    __documentation_section__ = 'Managers'
+
     ### INITIALIZER ###
 
     def __init__(self, expr=None, allow_empty_containers=True):
@@ -61,8 +65,113 @@ class WellformednessManager(AbjadObject):
                         break
         return violators, total
 
+    def check_conflicting_clefs(self):
+        r'''Checks for conflicting clefs.
+
+        Conflicting clefs defined equal to the situation in which a first clef
+        is attached to a container and a second clef is attached to a child of
+        the container that starts at the same time as the container.
+
+        Situation does not usually arise because an exception raises on attempt
+        to attach a clef to any component that starts at the same time as some
+        other component in the score tree.
+
+        But advanced users can stumble into this situation as described in
+        the following examples.
+
+        ..  container:: example
+
+            **Example 1.** Conflicting clefs result from attaching clefs to
+            separate containers and then appending one container to the other:
+
+            ::
+
+                >>> staff = Staff()
+                >>> attach(Clef('bass'), staff)
+                >>> voice = Voice()
+                >>> attach(Clef('treble'), voice)
+                >>> staff.append(voice)
+
+            ::
+
+                >>> f(staff)
+                \new Staff {
+                    \clef "bass"
+                    \new Voice {
+                        \clef "treble"
+                    }
+                }
+
+            ::
+
+                >>> inspect_(staff).is_well_formed()
+                False
+
+            This is bad.
+
+        ..  container:: example
+
+            **Example 2.** Conflicting clefs result from attaching clefs to
+            free-standing leaves, then to a container and then extending the
+            cleffed-container with the cleffed-leaves:
+
+            ::
+
+                >>> staff = Staff()
+                >>> attach(Clef('bass'), staff)
+                >>> leaves = scoretools.make_leaves([0, 2, 4, 5], [(1, 4)])
+                >>> attach(Clef('treble'), leaves[0])
+                >>> staff.extend(leaves)
+
+            ::
+
+                >>> f(staff)
+                \new Staff {
+                    \clef "bass"
+                    \clef "treble"
+                    c'4
+                    d'4
+                    e'4
+                    f'4
+                }
+
+            ::
+
+                >>> inspect_(staff).is_well_formed()
+                False
+
+            This is also bad.
+
+        ..  todo:: Raise an exception on append or extend to prohibit these
+            cases.
+
+        Returns violators and total.
+        '''
+        from abjad.tools import indicatortools
+        from abjad.tools import scoretools
+        from abjad.tools.topleveltools import inspect_
+        from abjad.tools.topleveltools import iterate
+        violators = []
+        containers = iterate(self.expr).by_class(scoretools.Container)
+        total_containers = 0
+        for container in containers:
+            total_containers += 1
+            if not inspect_(container).has_indicator(indicatortools.Clef):
+                continue
+            current_component = container
+            while (isinstance(current_component, scoretools.Container) and
+                0 < len(current_component)):
+                first_child = current_component[0]
+                if inspect_(first_child).has_indicator(indicatortools.Clef):
+                    violators.append(container)
+                    break
+                current_component = first_child
+        return violators, total_containers
+
     def check_discontiguous_spanners(self):
-        r'''There are now two different types of spanner.
+        r'''Checks for discontiguous spanners.
+
+        There are now two different types of spanner.
         Most spanners demand that spanner components be
         logical-voice-contiguous. But a few special spanners (like Tempo)
         do not make such a demand. The check here consults the experimental
@@ -72,7 +181,7 @@ class WellformednessManager(AbjadObject):
         '''
         from abjad.tools.selectiontools import Selection
         violators = []
-        total, bad = 0, 0
+        total = 0
         for spanner in self.expr._get_descendants()._get_spanners():
             if spanner._contiguity_constraint == 'logical voice':
                 if not Selection._all_are_contiguous_components_in_same_logical_voice(
@@ -98,7 +207,6 @@ class WellformednessManager(AbjadObject):
                     violators.extend([x for x in components
                         if id(x) == current_id])
         return violators, len(total_ids)
-
 
     def check_empty_containers(self):
         r'''Checks to make sure there are no empty containers in score.
@@ -195,7 +303,6 @@ class WellformednessManager(AbjadObject):
                         if leaf.written_pitch != next_leaf.written_pitch:
                             violators.append(leaf)
         return violators, total
-
 
     def check_misrepresented_flags(self):
         r'''Checks to make sure there are no misrepresented flags in score.
@@ -339,7 +446,7 @@ class WellformednessManager(AbjadObject):
         '''
         from abjad.tools import spannertools
         violators = []
-        total, bad = 0, 0
+        total = 0
         prototype = (spannertools.Hairpin,)
         hairpins = self.expr._get_descendants()._get_spanners(prototype)
         for hairpin in hairpins:

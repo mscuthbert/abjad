@@ -12,6 +12,37 @@ from abjad.tools.handlertools.ArticulationHandler import ArticulationHandler
 
 class PatternedArticulationsHandler(ArticulationHandler):
     r'''Patterned articulations handler.
+
+    ..  container:: example
+
+        **Example 1.** Accents first logic tie of every three logical ties:
+
+        ::
+
+            >>> handler = handlertools.PatternedArticulationsHandler(
+            ...     articulation_lists=(['accent'], None, None),
+            ...     )
+            >>> staff = Staff("c'4 ~ c'8 d'8 ~ d'4 r4 e'4 g'4 fs'4 ~ fs'4")
+            >>> logical_ties = iterate(staff).by_logical_tie(pitched=True)
+            >>> logical_ties = list(logical_ties)
+            >>> logical_ties = handler(logical_ties)
+            >>> show(staff) # doctest: +SKIP
+
+        ..  doctest::
+
+            >>> print(format(staff))
+            \new Staff {
+                c'4 -\accent ~
+                c'8
+                d'8 ~
+                d'4
+                r4
+                e'4 -\accent
+                g'4
+                fs'4 ~
+                fs'4
+            }
+
     '''
 
     ### CLASS ATTRIBUTES ###
@@ -39,21 +70,21 @@ class PatternedArticulationsHandler(ArticulationHandler):
             )
         if articulation_lists is not None:
             for articulation_list in articulation_lists:
-                prototype = (tuple, list)
-                if not isinstance(articulation_list, (tuple, list)):
+                prototype = (tuple, list, type(None))
+                if not isinstance(articulation_list, prototype):
                     message = 'not articulation list: {!r}.'
                     message = message.format(articulation_list)
                     raise TypeError(message)
-                for articulation in articulation_list:
-                    if not isinstance(articulation, str):
-                        message = 'not articulation: {!r}.'
-                        message = message.format(articulation)
-                        raise TypeError(message)
+                if articulation_list is not None:
+                    for articulation in articulation_list:
+                        if not isinstance(articulation, str):
+                            message = 'not articulation: {!r}.'
+                            message = message.format(articulation)
+                            raise TypeError(message)
         self._articulation_lists = articulation_lists
 
     ### SPECIAL METHODS ###
 
-    #def __call__(self, expr, offset=0, skip_first=0, skip_last=0):
     def __call__(
         self, 
         expr, 
@@ -73,10 +104,14 @@ class PatternedArticulationsHandler(ArticulationHandler):
         notes_and_chords = notes_and_chords[skip_first:]
         if skip_last:
             notes_and_chords = notes_and_chords[:-skip_last]
-        for i, note_or_chord in enumerate(notes_and_chords):
+        i = 0
+        for note_or_chord in notes_and_chords:
             logical_tie = inspect_(note_or_chord).get_logical_tie()
             duration = logical_tie.get_duration()
             articulation_list = articulation_lists[offset+i]
+            if articulation_list is None:
+                i += 1
+                continue
             articulation_list = [
                 indicatortools.Articulation(_)
                 for _ in articulation_list
@@ -101,45 +136,14 @@ class PatternedArticulationsHandler(ArticulationHandler):
                     maximum_written_pitch = note_or_chord.written_pitches[-1]
                 if self.maximum_written_pitch < maximum_written_pitch:
                     continue
-            for articulation in articulation_list:
-                # TODO: make new(articulation) work
-                articulation = copy.copy(articulation)
-                attach(articulation, note_or_chord)
+            logical_tie = inspect_(note_or_chord).get_logical_tie()
+            if note_or_chord is logical_tie.head:
+                for articulation in articulation_list:
+                    # TODO: make new(articulation) work
+                    articulation = copy.copy(articulation)
+                    attach(articulation, note_or_chord)
+                i += 1
         return expr
-
-    ### PRIVATE PROPERTIES ###
-
-    @property
-    def _attribute_manifest(self):
-        from abjad.tools import systemtools
-        from ide import idetools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='articulation_lists',
-                command='al',
-                editor=idetools.getters.get_lists,
-                ),
-            systemtools.AttributeDetail(
-                name='minimum_duration',
-                command='nd',
-                editor=idetools.getters.get_duration,
-                ),
-            systemtools.AttributeDetail(
-                name='maximum_duration',
-                command='xd',
-                editor=idetools.getters.get_duration,
-                ),
-            systemtools.AttributeDetail(
-                name='minimum_written_pitch',
-                command='np',
-                editor=idetools.getters.get_named_pitch,
-                ),
-            systemtools.AttributeDetail(
-                name='maximum_written_pitch',
-                command='xp',
-                editor=idetools.getters.get_named_pitch,
-                ),
-            )
 
     ### PUBLIC PROPERTIES ###
 

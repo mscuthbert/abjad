@@ -8,10 +8,14 @@ class TupletSpellingSpecifier(AbjadValueObject):
 
     ### CLASS VARIABLES ###
 
+    __documentation_section__ = 'Specifiers'
+
     __slots__ = (
         '_avoid_dots',
+        '_flatten_trivial_tuplets',
         '_is_diminution',
         '_simplify_tuplets',
+        '_use_note_duration_bracket',
         )
 
     ### INITIALIZER ###
@@ -19,36 +23,19 @@ class TupletSpellingSpecifier(AbjadValueObject):
     def __init__(
         self,
         avoid_dots=False,
+        flatten_trivial_tuplets=False,
         is_diminution=True,
         simplify_tuplets=False,
+        use_note_duration_bracket=False,
         ):
+        # TODO: Consider renaming is_diminution=True to is_augmentation=None.
+        #       That would allow for all keywords to default to None,
+        #       and therefore a single-line storage format.
         self._avoid_dots = bool(avoid_dots)
+        self._flatten_trivial_tuplets = bool(flatten_trivial_tuplets)
         self._is_diminution = bool(is_diminution)
         self._simplify_tuplets = bool(simplify_tuplets)
-
-    ### PRIVATE PROPERTIES ###
-
-    @property
-    def _attribute_manifest(self):
-        from abjad.tools import systemtools
-        from ide import idetools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='avoid_dots',
-                command='ad',
-                editor=idetools.getters.get_boolean,
-                ),
-            systemtools.AttributeDetail(
-                name='is_diminution',
-                command='id',
-                editor=idetools.getters.get_boolean,
-                ),
-            systemtools.AttributeDetail(
-                name='simplify_tuplets',
-                command='st',
-                editor=idetools.getters.get_boolean,
-                ),
-            )
+        self._use_note_duration_bracket = bool(use_note_duration_bracket)
 
     ### PUBLIC PROPERTIES ###
 
@@ -59,9 +46,24 @@ class TupletSpellingSpecifier(AbjadValueObject):
 
         Defaults to false.
 
-        Returns boolean.
+        Set to true or false.
+
+        Returns true or false.
         '''
         return self._avoid_dots
+
+    @property
+    def flatten_trivial_tuplets(self):
+        r'''Is true when tuplet spelling should flatten trivial tuplets.
+        Otherwise false.
+
+        Defaults to false.
+
+        Set to true or false.
+
+        Returns true or false.
+        '''
+        return self._flatten_trivial_tuplets
 
     @property
     def is_diminution(self):
@@ -70,7 +72,9 @@ class TupletSpellingSpecifier(AbjadValueObject):
 
         Defaults to true.
 
-        Returns boolean.
+        Set to true or false.
+
+        Returns true or false.
         '''
         return self._is_diminution
 
@@ -80,6 +84,21 @@ class TupletSpellingSpecifier(AbjadValueObject):
 
         Defaults to false.
 
-        Returns boolean.
+        Set to true or false
+
+        Returns true or false.
         '''
         return self._simplify_tuplets
+
+    @property
+    def use_note_duration_bracket(self):
+        r'''Is true when tuplet should override tuplet number text with note
+        duration bracket giving tuplet duration. Otherwise false.
+
+        Defaults to false.
+
+        Set to true or false.
+
+        Returns true or false.
+        '''
+        return self._use_note_duration_bracket

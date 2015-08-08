@@ -1,16 +1,12 @@
 # -*- encoding: utf-8 -*-
 from abjad.tools import datastructuretools
-from abjad.tools import durationtools
 from abjad.tools import mathtools
 from abjad.tools import metertools
 from abjad.tools import scoretools
 from abjad.tools import selectiontools
 from abjad.tools import spannertools
-from abjad.tools.rhythmmakertools.RhythmMaker import RhythmMaker
 from abjad.tools.topleveltools import attach
-from abjad.tools.topleveltools import detach
-from abjad.tools.topleveltools import iterate
-from abjad.tools.topleveltools import new
+from abjad.tools.rhythmmakertools.RhythmMaker import RhythmMaker
 
 
 class NoteRhythmMaker(RhythmMaker):
@@ -57,6 +53,8 @@ class NoteRhythmMaker(RhythmMaker):
 
     ### CLASS VARIABLES ###
 
+    __documentation_section__ = 'Rhythm-makers'
+
     __slots__ = (
         '_burnish_specifier',
         )
@@ -92,10 +90,12 @@ class NoteRhythmMaker(RhythmMaker):
 
     ### SPECIAL METHODS ###
 
-    def __call__(self, divisions, seeds=None):
+    def __call__(self, divisions, rotation=None):
         r'''Calls note rhythm-maker on `divisions`.
 
         ..  container:: example
+
+            **Example 1.** Calls rhythm-maker on divisions:
 
             ::
 
@@ -112,7 +112,7 @@ class NoteRhythmMaker(RhythmMaker):
         return RhythmMaker.__call__(
             self,
             divisions,
-            seeds=seeds,
+            rotation=rotation,
             )
 
     def __eq__(self, arg):
@@ -168,7 +168,7 @@ class NoteRhythmMaker(RhythmMaker):
     def __hash__(self):
         r'''Hashes note rhythm-maker.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''
@@ -187,30 +187,6 @@ class NoteRhythmMaker(RhythmMaker):
         Returns string.
         '''
         return RhythmMaker.__repr__(self)
-
-    ### PRIVATE PROPERTIES ###
-
-    @property
-    def _attribute_manifest(self):
-        from abjad.tools import rhythmmakertools
-        from abjad.tools import systemtools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='beam_specifier',
-                command='bs',
-                editor=rhythmmakertools.BeamSpecifier,
-                ),
-            systemtools.AttributeDetail(
-                name='duration_spelling_specifier',
-                command='dss',
-                editor=rhythmmakertools.DurationSpellingSpecifier,
-                ),
-            systemtools.AttributeDetail(
-                name='tie_specifier',
-                command='ts',
-                editor=rhythmmakertools.TieSpecifier,
-                ),
-            )
 
     ### PRIVATE METHODS ###
 
@@ -248,7 +224,7 @@ class NoteRhythmMaker(RhythmMaker):
         elif left_count <= len(selections):
             right_count = len(selections) - left_count
             middle_count = 0
-        else:  
+        else:
             left_count = len(selections)
             right_count = 0
             middle_count = 0
@@ -280,15 +256,12 @@ class NoteRhythmMaker(RhythmMaker):
         new_selection = selectiontools.Selection(new_selection)
         return new_selection
 
-    def _make_music(self, divisions, seeds):
+    def _make_music(self, divisions, rotation):
         from abjad.tools import rhythmmakertools
         selections = []
-        duration_specifier = self.duration_spelling_specifier
-        if duration_specifier is None:
-            duration_specifier = rhythmmakertools.DurationSpellingSpecifier()
-        tuplet_specifier = self.tuplet_spelling_specifier
-        if tuplet_specifier is None:
-            tuplet_specifier = rhythmmakertools.TupletSpellingSpecifier()
+        duration_specifier = self._get_duration_spelling_specifier()
+        tie_specifier = self._get_tie_specifier()
+        tuplet_specifier = self._get_tuplet_spelling_specifier()
         for division in divisions:
             if (duration_specifier.spell_metrically == True or
                 (duration_specifier.spell_metrically == 'unassignable' and
@@ -296,6 +269,10 @@ class NoteRhythmMaker(RhythmMaker):
                 meter = metertools.Meter(division)
                 rhythm_tree_container = meter.root_node
                 durations = [_.duration for _ in rhythm_tree_container]
+            elif isinstance(duration_specifier.spell_metrically,
+                rhythmmakertools.PartitionTable):
+                partition_table = duration_specifier.spell_metrically
+                durations = partition_table.respell_division(division)
             else:
                 durations = [division]
             selection = scoretools.make_leaves(
@@ -306,14 +283,163 @@ class NoteRhythmMaker(RhythmMaker):
                 forbidden_written_duration=\
                     duration_specifier.forbidden_written_duration,
                 is_diminution=tuplet_specifier.is_diminution,
+                use_messiaen_style_ties=tie_specifier.use_messiaen_style_ties,
                 )
+            if (
+                1 < len(selection) and
+                not selection[0]._has_spanner(spannertools.Tie)
+                ):
+                tie = spannertools.Tie(
+                    use_messiaen_style_ties=tie_specifier.use_messiaen_style_ties,
+                    )
+                attach(tie, selection[:])
             selections.append(selection)
         selections = self._apply_burnish_specifier(selections)
         self._apply_beam_specifier(selections)
-        selections = self._apply_output_masks(selections)
+        selections = self._apply_output_masks(selections, rotation)
+        if duration_specifier.rewrite_meter:
+            selections = duration_specifier._rewrite_meter_(
+                selections,
+                divisions,
+                use_messiaen_style_ties=tie_specifier.use_messiaen_style_ties,
+                )
         return selections
 
     ### PUBLIC PROPERTIES ###
+
+    @property
+    def beam_specifier(self):
+        r'''Gets beam specifier of note rhythm-maker.
+
+        ..  container:: example
+
+            **Example 1.** Beams each division:
+
+            ::
+
+                >>> maker = rhythmmakertools.NoteRhythmMaker(
+                ...     beam_specifier=rhythmmakertools.BeamSpecifier(
+                ...         beam_each_division=True,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(5, 32), (5, 32)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 5/32
+                        c'8 ~ [
+                        c'32 ]
+                    }
+                    {
+                        c'8 ~ [
+                        c'32 ]
+                    }
+                }
+
+            This is default behavior.
+
+        ..  container:: example
+
+            **Example 2.** Beams divisions together:
+
+            ::
+
+                >>> maker = rhythmmakertools.NoteRhythmMaker(
+                ...     beam_specifier=rhythmmakertools.BeamSpecifier(
+                ...         beam_divisions_together=True,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(5, 32), (5, 32)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 5/32
+                        \set stemLeftBeamCount = #0
+                        \set stemRightBeamCount = #1
+                        c'8 [ ~
+                        \set stemLeftBeamCount = #3
+                        \set stemRightBeamCount = #1
+                        c'32
+                    }
+                    {
+                        \set stemLeftBeamCount = #1
+                        \set stemRightBeamCount = #1
+                        c'8 ~
+                        \set stemLeftBeamCount = #3
+                        \set stemRightBeamCount = #0
+                        c'32 ]
+                    }
+                }
+
+        ..  container:: example
+
+            **Example 3.** Makes no beams:
+
+            ::
+
+                >>> maker = rhythmmakertools.NoteRhythmMaker(
+                ...     beam_specifier=rhythmmakertools.BeamSpecifier(
+                ...         beam_divisions_together=False,
+                ...         beam_each_division=False,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(5, 32), (5, 32)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 5/32
+                        c'8 ~
+                        c'32
+                    }
+                    {
+                        c'8 ~
+                        c'32
+                    }
+                }
+
+        Returns beam specifier.
+        '''
+        superclass = super(NoteRhythmMaker, self)
+        return superclass.beam_specifier
 
     @property
     def burnish_specifier(self):
@@ -553,14 +679,14 @@ class NoteRhythmMaker(RhythmMaker):
 
         ..  container:: example
 
-            **Example 2.** Forbids notes with written duration greater than or 
+            **Example 2.** Forbids notes with written duration greater than or
             equal to ``1/2``:
 
             ::
 
                 >>> maker = rhythmmakertools.NoteRhythmMaker(
                 ...     duration_spelling_specifier=rhythmmakertools.DurationSpellingSpecifier(
-                ...     forbidden_written_duration=Duration(1, 2),
+                ...         forbidden_written_duration=Duration(1, 2),
                 ...         ),
                 ...     )
 
@@ -593,8 +719,8 @@ class NoteRhythmMaker(RhythmMaker):
 
         ..  container:: example
 
-            **Example 3.** Spells metrically all divisions metrically
-            when `spell_metrically` is true:
+            **Example 3a.** Spells all divisions metrically when
+            `spell_metrically` is true:
 
             ::
 
@@ -621,26 +747,24 @@ class NoteRhythmMaker(RhythmMaker):
                 \new RhythmicStaff {
                     {
                         \time 3/4
-                        c'4
-                        c'4
+                        c'4 ~
+                        c'4 ~
                         c'4
                     }
                     {
                         \time 6/16
-                        c'8. [
+                        c'8. ~ [
                         c'8. ]
                     }
                     {
                         \time 9/16
-                        c'8. [
-                        c'8.
+                        c'8. ~ [
+                        c'8. ~
                         c'8. ]
                     }
                 }
 
-        ..  container:: example
-
-            **Example 4.** Spells unassignable durations metrically when
+            **Example 3b.** Spells only unassignable durations metrically when
             `spell_metrically` is ``'unassignable'``:
 
             ::
@@ -676,8 +800,8 @@ class NoteRhythmMaker(RhythmMaker):
                     }
                     {
                         \time 9/16
-                        c'8. [
-                        c'8.
+                        c'8. ~ [
+                        c'8. ~
                         c'8. ]
                     }
                 }
@@ -685,6 +809,95 @@ class NoteRhythmMaker(RhythmMaker):
             ``9/16`` is spelled metrically because it is unassignable.
             The other durations are spelled with the fewest number of symbols
             possible.
+
+            **Example 3c.** Spells durations with custom partition table:
+
+            ::
+
+                >>> partition_table = rhythmmakertools.PartitionTable([
+                ...     (5, [3, 2]),
+                ...     (9, [3, 3, 3]),
+                ...     ])
+                >>> maker = rhythmmakertools.NoteRhythmMaker(
+                ...     duration_spelling_specifier=rhythmmakertools.DurationSpellingSpecifier(
+                ...         spell_metrically=partition_table,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(5, 16), (9, 16), (10, 16)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 5/16
+                        c'8. ~ [
+                        c'8 ]
+                    }
+                    {
+                        \time 9/16
+                        c'8. ~ [
+                        c'8. ~
+                        c'8. ]
+                    }
+                    {
+                        \time 10/16
+                        c'4. ~
+                        c'4
+                    }
+                }
+
+        ..  container:: example
+
+            **Example 4.** Rewrites meter:
+
+            ::
+
+                >>> maker = rhythmmakertools.NoteRhythmMaker(
+                ...     duration_spelling_specifier=rhythmmakertools.DurationSpellingSpecifier(
+                ...         rewrite_meter=True,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(3, 4), (6, 16), (9, 16)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 3/4
+                        c'2.
+                    }
+                    {
+                        \time 6/16
+                        c'4.
+                    }
+                    {
+                        \time 9/16
+                        c'4. ~
+                        c'8.
+                    }
+                }
 
         Returns duration spelling specifier or none.
         '''
@@ -737,13 +950,13 @@ class NoteRhythmMaker(RhythmMaker):
 
         ..  container:: example
 
-            **Example 2.** Masks every other division:
+            **Example 2.** Silences every other division:
 
             ::
 
                 >>> maker = rhythmmakertools.NoteRhythmMaker(
                 ...     output_masks=[
-                ...         rhythmmakertools.BooleanPattern(
+                ...         rhythmmakertools.SilenceMask(
                 ...             indices=[0],
                 ...             period=2,
                 ...             ),
@@ -785,12 +998,12 @@ class NoteRhythmMaker(RhythmMaker):
 
         ..  container:: example
 
-            **Example 3.** Masks every output division:
+            **Example 3.** Silences every output division:
 
             ::
 
                 >>> maker = rhythmmakertools.NoteRhythmMaker(
-                ...     output_masks=[rhythmmakertools.mask_all()],
+                ...     output_masks=[rhythmmakertools.silence_all()],
                 ...     )
 
             ::
@@ -826,10 +1039,402 @@ class NoteRhythmMaker(RhythmMaker):
                     }
                 }
 
+        ..  container:: example
+
+            **Example 4.** Silences every output division and uses
+            multimeasure rests:
+
+            ::
+
+                >>> mask = rhythmmakertools.SilenceMask(
+                ...     indices=[0],
+                ...     period=1,
+                ...     use_multimeasure_rests=True,
+                ...     )
+                >>> maker = rhythmmakertools.NoteRhythmMaker(
+                ...     output_masks=[mask],
+                ...     )
+
+            ::
+
+                >>> divisions = [(4, 8), (3, 8), (4, 8), (3, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 4/8
+                        R1 * 1/2
+                    }
+                    {
+                        \time 3/8
+                        R1 * 3/8
+                    }
+                    {
+                        \time 4/8
+                        R1 * 1/2
+                    }
+                    {
+                        \time 3/8
+                        R1 * 3/8
+                    }
+                }
+
+        ..  container:: example
+
+            **Example 5.** Silences every other output division except for the
+            first and last:
+
+            ::
+
+                >>> rest_mask = rhythmmakertools.SilenceMask(
+                ...     indices=[0],
+                ...     period=2,
+                ...     )
+                >>> null_mask = rhythmmakertools.NullMask(
+                ...     indices=[0, -1],
+                ...     )
+                >>> maker = rhythmmakertools.NoteRhythmMaker(
+                ...     output_masks=[rest_mask, null_mask],
+                ...     )
+
+            ::
+
+                >>> divisions = [(4, 8), (3, 8), (4, 8), (3, 8), (2, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 4/8
+                        c'2
+                    }
+                    {
+                        \time 3/8
+                        c'4.
+                    }
+                    {
+                        \time 4/8
+                        r2
+                    }
+                    {
+                        \time 3/8
+                        c'4.
+                    }
+                    {
+                        \time 2/8
+                        c'4
+                    }
+                }
+
         Set to output masks or none.
         '''
         superclass = super(NoteRhythmMaker, self)
         return superclass.output_masks
+
+    @property
+    def tie_specifier(self):
+        r'''Gets tie specifier of note rhythm-maker.
+
+        ..  container:: example
+
+            **Example 1.** Does not tie across divisions:
+
+            ::
+
+                >>> maker = rhythmmakertools.NoteRhythmMaker(
+                ...     tie_specifier=rhythmmakertools.TieSpecifier(
+                ...         tie_across_divisions=False,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(4, 8), (3, 8), (4, 8), (3, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 4/8
+                        c'2
+                    }
+                    {
+                        \time 3/8
+                        c'4.
+                    }
+                    {
+                        \time 4/8
+                        c'2
+                    }
+                    {
+                        \time 3/8
+                        c'4.
+                    }
+                }
+
+            This is default behavior.
+
+        ..  container:: example
+
+            **Example 2.** Ties across divisions:
+
+            ::
+
+                >>> maker = rhythmmakertools.NoteRhythmMaker(
+                ...     tie_specifier=rhythmmakertools.TieSpecifier(
+                ...         tie_across_divisions=True,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(4, 8), (3, 8), (4, 8), (3, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 4/8
+                        c'2 ~
+                    }
+                    {
+                        \time 3/8
+                        c'4. ~
+                    }
+                    {
+                        \time 4/8
+                        c'2 ~
+                    }
+                    {
+                        \time 3/8
+                        c'4.
+                    }
+                }
+
+        ..  container:: example
+
+            **Example 3.** Patterns ties across divisions:
+
+            ::
+
+                >>> pattern = rhythmmakertools.BooleanPattern(
+                ...     indices=[0],
+                ...     period=2,
+                ...     )
+                >>> maker = rhythmmakertools.NoteRhythmMaker(
+                ...     tie_specifier=rhythmmakertools.TieSpecifier(
+                ...         tie_across_divisions=pattern,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(4, 8), (3, 8), (4, 8), (3, 8)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 4/8
+                        c'2 ~
+                    }
+                    {
+                        \time 3/8
+                        c'4.
+                    }
+                    {
+                        \time 4/8
+                        c'2 ~
+                    }
+                    {
+                        \time 3/8
+                        c'4.
+                    }
+                }
+
+        ..  container:: example
+
+            **Example 4.** Uses Messiaen-style ties:
+
+            ::
+
+                >>> maker = rhythmmakertools.NoteRhythmMaker(
+                ...     tie_specifier=rhythmmakertools.TieSpecifier(
+                ...         tie_across_divisions=True,
+                ...         use_messiaen_style_ties=True,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(4, 8), (3, 8), (9, 16), (5, 16)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 4/8
+                        c'2
+                    }
+                    {
+                        \time 3/8
+                        c'4. \repeatTie
+                    }
+                    {
+                        \time 9/16
+                        c'2 \repeatTie
+                        c'16 \repeatTie
+                    }
+                    {
+                        \time 5/16
+                        c'4 \repeatTie
+                        c'16 \repeatTie
+                    }
+                }
+
+        ..  container:: example
+
+            **Example 5.** Strips all ties:
+
+            ::
+
+                >>> maker = rhythmmakertools.NoteRhythmMaker(
+                ...     tie_specifier=rhythmmakertools.TieSpecifier(
+                ...         strip_ties=True,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(7, 16), (1, 4), (5, 16)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 7/16
+                        c'4..
+                    }
+                    {
+                        \time 1/4
+                        c'4
+                    }
+                    {
+                        \time 5/16
+                        c'4
+                        c'16
+                    }
+                }
+
+        ..  container:: example
+
+            **Example 6.** Spells durations metrically and then strips all
+            ties:
+
+            ::
+
+                >>> maker = rhythmmakertools.NoteRhythmMaker(
+                ...     duration_spelling_specifier=rhythmmakertools.DurationSpellingSpecifier(
+                ...         spell_metrically=True,
+                ...         ),
+                ...     tie_specifier=rhythmmakertools.TieSpecifier(
+                ...         strip_ties=True,
+                ...         ),
+                ...     )
+
+            ::
+
+                >>> divisions = [(7, 16), (1, 4), (5, 16)]
+                >>> music = maker(divisions)
+                >>> lilypond_file = rhythmmakertools.make_lilypond_file(
+                ...     music,
+                ...     divisions,
+                ...     )
+                >>> show(lilypond_file) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> staff = maker._get_rhythmic_staff(lilypond_file)
+                >>> f(staff)
+                \new RhythmicStaff {
+                    {
+                        \time 7/16
+                        c'8. [
+                        c'8
+                        c'8 ]
+                    }
+                    {
+                        \time 1/4
+                        c'4
+                    }
+                    {
+                        \time 5/16
+                        c'8. [
+                        c'8 ]
+                    }
+                }
+
+        Returns tie specifier.
+        '''
+        superclass = super(NoteRhythmMaker, self)
+        return superclass.tie_specifier
 
     @property
     def tuplet_spelling_specifier(self):

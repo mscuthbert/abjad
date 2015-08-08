@@ -1,17 +1,20 @@
 # -*- encoding: utf-8 -*-
+import collections
+import fractions
+import numbers
 from abjad.tools import mathtools
 from abjad.tools import schemetools
 from abjad.tools import stringtools
 from abjad.tools.topleveltools import new
-from abjad.tools.abctools.AbjadObject import AbjadObject
+from abjad.tools.abctools.AbjadValueObject import AbjadValueObject
 
 
-class Markup(AbjadObject):
+class Markup(AbjadValueObject):
     r'''A LilyPond markup.
 
     ..  container:: example
 
-        Initializes from string:
+        **Example 1.** Initializes from string:
 
         ::
 
@@ -26,7 +29,7 @@ class Markup(AbjadObject):
 
     ..  container:: example
 
-        Initializes from other markup:
+        **Example 2.** Initializes from other markup:
 
         ::
 
@@ -46,7 +49,7 @@ class Markup(AbjadObject):
 
     ..  container:: example
 
-        Attaches markup to score components:
+        **Example 3.** Attaches markup to score components:
 
         ::
 
@@ -111,11 +114,13 @@ class Markup(AbjadObject):
         elif isinstance(contents, type(self)):
             direction = direction or contents._direction
             new_contents = tuple(contents._contents)
-        elif isinstance(contents, (list, tuple)) and 0 < len(contents):
+        elif isinstance(contents, collections.Sequence) and 0 < len(contents):
             new_contents = []
             for arg in contents:
                 if isinstance(arg, (str, markuptools.MarkupCommand)):
                     new_contents.append(arg)
+                elif isinstance(arg, type(self)):
+                    new_contents.extend(arg.contents)
                 else:
                     new_contents.append(str(arg))
             new_contents = tuple(new_contents)
@@ -123,8 +128,8 @@ class Markup(AbjadObject):
             new_contents = (str(contents),)
         self._contents = new_contents
         self._format_slot = 'right'
-        direction = \
-            stringtools.arg_to_tridirectional_ordinal_constant(direction)
+        direction = stringtools.expr_to_tridirectional_ordinal_constant(
+            direction)
         self._direction = direction
         assert isinstance(stack_priority, int), repr(stack_priority)
         self._stack_priority = stack_priority
@@ -167,38 +172,6 @@ class Markup(AbjadObject):
         markup = type(self)(contents=commands)
         return markup
 
-    def __copy__(self, *args):
-        r'''Copies markup.
-
-        ..  container:: example
-
-            ::
-
-                >>> import copy
-                >>> string = r'\bold { allegro ma non troppo }'
-                >>> markup = Markup(string)
-                >>> new_markup = copy.copy(markup)
-                >>> show(new_markup) # doctest: +SKIP
-
-        Returns new markup.
-        '''
-        return type(self)(
-            self.contents,
-            direction=self.direction,
-            stack_priority=self.stack_priority
-            )
-
-    def __eq__(self, expr):
-        r'''Is true when `expr` is a markup with format equal to that
-        of this markup. Otherwise false.
-
-        Returns boolean.
-        '''
-        if isinstance(expr, type(self)):
-            if format(self) == format(expr):
-                return True
-        return False
-
     def __format__(self, format_specification=''):
         r'''Formats markup.
 
@@ -230,13 +203,6 @@ class Markup(AbjadObject):
         elif format_specification == 'storage':
             return systemtools.StorageFormatManager.get_storage_format(self)
         return str(self)
-
-    def __hash__(self):
-        r'''Hashes markup.
-
-        Returns integer.
-        '''
-        return hash((type(self).__name__, self.contents))
 
     def __illustrate__(self):
         r'''Illustrates markup.
@@ -270,7 +236,8 @@ class Markup(AbjadObject):
         from abjad.tools import markuptools
         lilypond_file = lilypondfiletools.make_basic_lilypond_file()
         lilypond_file.header_block.tagline = markuptools.Markup('""')
-        lilypond_file.items.append(self)
+        markup = new(self, direction=None)
+        lilypond_file.items.append(markup)
         return lilypond_file
 
     def __str__(self):
@@ -298,29 +265,6 @@ class Markup(AbjadObject):
         return self._lilypond_format
 
     ### PRIVATE PROPERTIES ###
-
-    @property
-    def _attribute_manifest(self):
-        from abjad.tools import systemtools
-        from ide import idetools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='contents',
-                display_string='arg',
-                command='ag',
-                editor=idetools.getters.get_string,
-                ),
-            systemtools.AttributeDetail(
-                name='direction',
-                command='dr',
-                editor=idetools.getters.get_direction_string,
-                ),
-            systemtools.AttributeDetail(
-                name='stack_priority',
-                command='sp',
-                editor=idetools.getters.get_integer,
-                ),
-            )
 
     @property
     def _format_pieces(self):
@@ -351,7 +295,7 @@ class Markup(AbjadObject):
         indent = systemtools.LilyPondFormatManager.indent
         direction = ''
         if self.direction is not None:
-            direction = stringtools.arg_to_tridirectional_lilypond_symbol(
+            direction = stringtools.expr_to_tridirectional_lilypond_symbol(
                 self.direction)
         # none
         if self.contents is None:
@@ -682,6 +626,66 @@ class Markup(AbjadObject):
             )
         return new(self, contents=command)
 
+    @staticmethod
+    def center_column(markups, direction=Up):
+        r'''LilyPond ``\center-column`` markup command.
+
+        ..  container:: example
+
+            ::
+
+                >>> city = Markup('Los Angeles')
+                >>> date = Markup('May - August 2014')
+                >>> markup = Markup.center_column([city, date])
+
+            ::
+
+                >>> print(format(markup))
+                ^ \markup {
+                    \center-column
+                        {
+                            "Los Angeles"
+                            "May - August 2014"
+                        }
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        ..  container:: example
+
+            Also works with a list of strings:
+
+            ::
+
+                >>> city = 'Los Angeles'
+                >>> date = 'May - August 2014'
+                >>> markup = Markup.center_column([city, date])
+
+            ::
+
+                >>> print(format(markup))
+                ^ \markup {
+                    \center-column
+                        {
+                            "Los Angeles"
+                            "May - August 2014"
+                        }
+                    }
+
+        Returns new markup.
+        '''
+        from abjad.tools import markuptools
+        contents = []
+        for markup in markups:
+            contents.append(Markup._parse_markup_command_argument(markup))
+        command = markuptools.MarkupCommand(
+            'center-column',
+            contents,
+            )
+        return Markup(contents=command, direction=direction)
+
     def circle(self):
         r'''LilyPond ``\circle`` markup command.
 
@@ -759,8 +763,43 @@ class Markup(AbjadObject):
         return Markup(contents=command, direction=direction)
 
     @staticmethod
+    def combine(markup_one, markup_two):
+        r'''LilyPond ``\combine`` markup command.
+
+        ..  container:: example
+
+            ::
+
+                >>> markup_one = Markup('a few words')
+                >>> markup_two = Markup.draw_line(10, 0)
+                >>> markup = Markup.combine(markup_one, markup_two)
+                >>> print(format(markup))
+                \markup {
+                    \combine
+                        "a few words"
+                        \draw-line
+                            #'(10 . 0)
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        Returns new markup.
+        '''
+        from abjad.tools import markuptools
+        contents_one = Markup._parse_markup_command_argument(markup_one)
+        contents_two = Markup._parse_markup_command_argument(markup_two)
+        command = markuptools.MarkupCommand(
+            'combine',
+            contents_one,
+            contents_two,
+            )
+        return Markup(contents=command)
+
+    @staticmethod
     def concat(markup_list):
-        r'''Lilypond ``\concat`` markup command.
+        r'''LilyPond ``\concat`` markup command.
 
         ..  container:: example
 
@@ -782,6 +821,10 @@ class Markup(AbjadObject):
                                 #"scripts.upbow"
                         }
                     }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
 
         Returns new markup.
         '''
@@ -860,6 +903,42 @@ class Markup(AbjadObject):
             )
         return new(self, contents=command)
 
+    @staticmethod
+    def filled_box(x_extent, y_extent, blot):
+        r'''LilyPond ``filled-box`` markup command.
+
+        ..  container:: example
+
+            ::
+
+                >>> markup = Markup.filled_box((0, 10), (2, 5), 1.5)
+                >>> print(format(markup))
+                \markup {
+                    \filled-box
+                        #'(0 . 10)
+                        #'(2 . 5)
+                        #1.5
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        Returns new markup.
+        '''
+        from abjad.tools import markuptools
+        x_extent = schemetools.SchemePair(x_extent)
+        y_extent = schemetools.SchemePair(y_extent)
+        blot = float(blot)
+        command = markuptools.MarkupCommand(
+            'filled-box',
+            x_extent,
+            y_extent,
+            blot,
+            )
+        return Markup(command)
+
+
     def finger(self):
         r'''LilyPond ``\finger`` markup command.
 
@@ -891,6 +970,33 @@ class Markup(AbjadObject):
             contents,
             )
         return new(self, contents=command)
+
+    @staticmethod
+    def flat():
+        r'''LilyPond ``\flat`` markup command.
+
+        ..  container:: example
+
+            ::
+
+                >>> markup = Markup.flat()
+
+            ::
+
+                >>> print(format(markup))
+                \markup {
+                    \flat
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        Returns new markup.
+        '''
+        from abjad.tools import markuptools
+        command = markuptools.MarkupCommand('flat')
+        return Markup(contents=command)
 
     def fontsize(self, fontsize):
         r'''LilyPond ``\fontsize`` markup command.
@@ -928,7 +1034,7 @@ class Markup(AbjadObject):
         return new(self, contents=command)
 
     @staticmethod
-    def fraction(numerator, denominator):
+    def fraction(*args):
         r'''LilyPond ``\fraction`` markup command.
 
         ..  container:: example
@@ -953,6 +1059,8 @@ class Markup(AbjadObject):
         Returns new markup
         '''
         from abjad.tools import markuptools
+        fraction = mathtools.NonreducedFraction(*args)
+        numerator, denominator = fraction.numerator, fraction.denominator
         command = markuptools.MarkupCommand(
             'fraction',
             str(numerator),
@@ -965,10 +1073,15 @@ class Markup(AbjadObject):
 
         ..  container:: example
 
+            **Example 1.** With Abjad direction constant:
+
             ::
 
                 >>> markup = Markup('Allegro assai')
                 >>> markup = markup.general_align('Y', Up)
+
+            ::
+
                 >>> print(format(markup))
                 \markup {
                     \general-align
@@ -977,18 +1090,47 @@ class Markup(AbjadObject):
                         "Allegro assai"
                     }
 
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        ..  container:: example
+
+            **Example 2.** With numeric direction value:
+
+            ::
+
+                >>> markup = Markup('Allegro assai')
+                >>> markup = markup.general_align('Y', 0.75)
+
+            ::
+
+                >>> print(format(markup))
+                \markup {
+                    \general-align
+                        #Y
+                        #0.75
+                        "Allegro assai"
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
         Returns new markup.
         '''
         from abjad.tools import markuptools
         contents = self._parse_markup_command_argument(self)
         axis = schemetools.Scheme(axis)
-        # TODO: make schemetools.Scheme(direction) work
+        # TODO: make schemetools.Scheme(Up) work
         if direction == Up:
             direction = schemetools.Scheme('UP')
         elif direction == Down:
             direction = schemetools.Scheme('DOWN')
         elif direction == Center:
             direction = schemetools.Scheme('CENTER')
+        elif isinstance(direction, numbers.Number):
+            direction = schemetools.Scheme(str(direction))
         else:
             message = 'unknown direction: {!r}.'
             message = message.format(direction)
@@ -996,6 +1138,40 @@ class Markup(AbjadObject):
         command = markuptools.MarkupCommand(
             'general-align',
             axis,
+            direction,
+            contents,
+            )
+        return new(self, contents=command)
+
+    def halign(self, direction):
+        r'''LilyPond ``halign`` markup command.
+
+        ..  container:: example
+
+            ::
+
+                >>> markup = Markup('Allegro assai')
+                >>> markup = markup.halign(0)
+
+            ::
+
+                >>> print(format(markup))
+                \markup {
+                    \halign
+                        #0
+                        "Allegro assai"
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        Returns new markup.
+        '''
+        from abjad.tools import markuptools
+        contents = self._parse_markup_command_argument(self)
+        command = markuptools.MarkupCommand(
+            'halign',
             direction,
             contents,
             )
@@ -1010,12 +1186,19 @@ class Markup(AbjadObject):
 
                 >>> markup = Markup('Allegro assai')
                 >>> markup = markup.hcenter_in(12)
+
+            ::
+
                 >>> print(format(markup))
                 \markup {
                     \hcenter-in
                         #12
                         "Allegro assai"
                     }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
 
         Returns new markup.
         '''
@@ -1058,6 +1241,38 @@ class Markup(AbjadObject):
             amount,
             )
         return Markup(contents=command)
+
+    def huge(self):
+        r'''LilyPond ``\huge`` markup command.
+
+        ..  container:: example
+
+            ::
+
+                >>> markup = Markup('Allegro assai')
+                >>> markup = markup.huge()
+
+            ::
+
+                >>> print(format(markup))
+                \markup {
+                    \huge
+                        "Allegro assai"
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        Returns new markup.
+        '''
+        from abjad.tools import markuptools
+        contents = self._parse_markup_command_argument(self)
+        command = markuptools.MarkupCommand(
+            'huge',
+            contents,
+            )
+        return new(self, contents=command)
 
     def italic(self):
         r'''LilyPond ``\italic`` markup command.
@@ -1123,6 +1338,45 @@ class Markup(AbjadObject):
             )
         return new(self, contents=command)
 
+    @staticmethod
+    def left_column(markups, direction=Up):
+        r'''LilyPond ``\left-column`` markup command.
+
+        ..  container:: example
+
+            ::
+
+                >>> city = Markup('Los Angeles')
+                >>> date = Markup('May - August 2014')
+                >>> markup = Markup.left_column([city, date])
+
+            ::
+
+                >>> print(format(markup))
+                ^ \markup {
+                    \left-column
+                        {
+                            "Los Angeles"
+                            "May - August 2014"
+                        }
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        Returns new markup.
+        '''
+        from abjad.tools import markuptools
+        contents = []
+        for markup in markups:
+            contents.extend(markup.contents)
+        command = markuptools.MarkupCommand(
+            'left-column',
+            contents,
+            )
+        return Markup(contents=command, direction=direction)
+
     def line(self, *markups):
         r'''LilyPond ``\line`` markup command.
 
@@ -1164,6 +1418,285 @@ class Markup(AbjadObject):
         return new(self, contents=command)
 
     @staticmethod
+    def make_big_centered_page_number_markup(text=None):
+        r'''Makes big centered page number markup.
+
+        ..  container:: example
+
+            ::
+
+                >>> markup = Markup.make_big_centered_page_number_markup()
+
+            ::
+
+                >>> print(format(markup, 'lilypond'))
+                \markup {
+                    \fill-line
+                        {
+                            \bold
+                                \fontsize
+                                    #3
+                                    \concat
+                                        {
+                                            \on-the-fly
+                                                #print-page-number-check-first
+                                                \fromproperty
+                                                    #'page:page-number-string
+                                        }
+                        }
+                    }
+
+        Returns markup.
+        '''
+        assert isinstance(text, (str, type(None))), repr(text)
+        if text is None:
+            contents = r'''
+            \fill-line {
+            \bold \fontsize #3 \concat {
+            \on-the-fly #print-page-number-check-first
+            \fromproperty #'page:page-number-string } }'''
+        else:
+            contents = r'''
+            \fill-line {{
+            \bold \fontsize #3 \concat {{
+            {} " " \char #x2014 " "
+            \on-the-fly #print-page-number-check-first
+            \fromproperty #'page:page-number-string }} }}'''
+            contents = contents.format(text)
+        markup = Markup(contents)
+        return markup
+
+    @staticmethod
+    def make_blank_line_markup():
+        r'''Makes blank line markup.
+
+        ..  container:: example
+
+            ::
+
+                >>> markup = Markup.make_blank_line_markup()
+
+            ::
+
+                >>> print(format(markup))
+                \markup { \fill-line { " " } }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        Returns markup.
+        '''
+        return Markup(r'\fill-line { " " }')
+
+    @staticmethod
+    def make_centered_title_markup(
+        title,
+        font_name='Times New Roman',
+        font_size=18,
+        vspace_before=6,
+        vspace_after=12,
+        ):
+        r'''Makes centered `title` markup.
+
+        ..  container:: example
+
+            ::
+
+                >>> markup = Markup.make_centered_title_markup('String Quartet')
+
+            ::
+
+                >>> print(format(markup, 'lilypond'))
+                \markup {
+                    \override
+                        #'(font-name . "Times New Roman")
+                        \fontsize
+                            #18
+                            \column
+                                {
+                                    \center-align
+                                        {
+                                            {
+                                                \vspace
+                                                    #6
+                                                \line
+                                                    {
+                                                        "String Quartet"
+                                                    }
+                                                \vspace
+                                                    #12
+                                            }
+                                        }
+                                }
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        Returns markup.
+        '''
+        assert isinstance(title, (str, list))
+        assert isinstance(font_name, str)
+        assert isinstance(font_size, (int, float))
+        if isinstance(title, str):
+            title_lines = [title]
+        else:
+            title_lines = title
+        title_lines_string = ''
+        for title_line in title_lines:
+            line = '                    \\line {{ "{}" }}\n'
+            line = line.format(title_line)
+            title_lines_string += line
+        title_lines_string = title_lines_string.strip('\n')
+        contents = r'''
+            \override #'(font-name . "{}")
+            \fontsize #{}
+            \column {{
+                \center-align {{
+                    {{
+                        \vspace #{}
+                        {}
+                        \vspace #{}
+                    }}
+                }}
+            }}'''
+        contents = contents.format(
+            font_name,
+            font_size,
+            vspace_before,
+            title_lines_string,
+            vspace_after,
+            )
+        return Markup(contents)
+
+    @staticmethod
+    def make_vertically_adjusted_composer_markup(
+        composer,
+        font_name='Times New Roman',
+        font_size=3,
+        space_above=20,
+        space_right=0,
+        ):
+        r'''Makes vertically adjusted `composer` markup.
+
+        ..  container:: example
+
+            ::
+
+                >>> markup = Markup.make_vertically_adjusted_composer_markup(
+                ...     'Josquin Desprez',
+                ...     )
+
+            ::
+
+                >>> print(format(markup, 'lilypond'))
+                \markup {
+                    \override
+                        #'(font-name . "Times New Roman")
+                        {
+                            \hspace
+                                #0
+                            \raise
+                                #-20
+                                \fontsize
+                                    #3
+                                    "Josquin Desprez"
+                            \hspace
+                                #0
+                        }
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        Returns markup.
+        '''
+        assert isinstance(composer, str)
+        assert isinstance(font_name, str)
+        assert isinstance(font_size, (int, float))
+        assert isinstance(space_above, (int, float))
+        assert isinstance(space_right, (int, float))
+        contents = r'''
+            \override #'(font-name . "{}") {{
+                \hspace #0
+                \raise #-{} \fontsize #{} "{}"
+                \hspace #{}
+            }}
+        '''
+        contents = contents.format(
+            font_name,
+            space_above,
+            font_size,
+            composer,
+            space_right,
+            )
+        return Markup(contents)
+
+    @staticmethod
+    def make_improper_fraction_markup(rational):
+        r'''Makes improper fraction markup.
+
+        ..  container:: example
+
+            **Example 1.** With integer-equivalent number:
+
+            ::
+
+                >>> markup = Markup.make_improper_fraction_markup(Fraction(6, 3))
+
+            ::
+
+                >>> print(format(markup))
+                \markup { 2 }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        ..  container:: example
+
+            **Example 2.** With non-integer-equivalent number:
+
+            ::
+
+                >>> markup = Markup.make_improper_fraction_markup(Fraction(7, 3))
+
+            ::
+
+                >>> print(format(markup))
+                \markup {
+                    2
+                    \tiny
+                        \fraction
+                            1
+                            3
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        '''
+        from abjad.tools import mathtools
+        if mathtools.is_integer_equivalent_number(rational):
+            number = int(rational)
+            markup = Markup(number)
+            return markup
+        assert isinstance(rational, fractions.Fraction), repr(rational)
+        integer_part = int(rational)
+        fraction_part = rational - integer_part
+        integer_markup = Markup(integer_part)
+        numerator = fraction_part.numerator
+        denominator = fraction_part.denominator
+        fraction_markup = Markup.fraction(numerator, denominator)
+        fraction_markup = fraction_markup.tiny()
+        markup = integer_markup + fraction_markup
+        return markup
+
+    @staticmethod
     def musicglyph(glyph_name=None, direction=Up):
         r'''LilyPond ``\musicglyph`` markup command.
 
@@ -1200,6 +1733,68 @@ class Markup(AbjadObject):
         return markuptools.Markup(contents=command, direction=direction)
 
     @staticmethod
+    def natural():
+        r'''LilyPond ``\natural`` markup command.
+
+        ..  container:: example
+
+            ::
+
+                >>> markup = Markup.natural()
+
+            ::
+
+                >>> print(format(markup))
+                \markup {
+                    \natural
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        Returns new markup.
+        '''
+        from abjad.tools import markuptools
+        command = markuptools.MarkupCommand('natural')
+        return Markup(contents=command)
+
+    @staticmethod
+    def note_by_number(log, dot_count, stem_direction, direction=Up):
+        r'''LilyPond ``\note-by-number`` markup command.
+
+        ..  container:: example
+
+            ::
+
+                >>> markup = Markup.note_by_number(3, 2, 1)
+
+            ::
+
+                >>> print(format(markup))
+                ^ \markup {
+                    \note-by-number
+                        #3
+                        #2
+                        #1
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        Returns new markup.
+        '''
+        from abjad.tools import markuptools
+        command = markuptools.MarkupCommand(
+            'note-by-number',
+            log,
+            dot_count,
+            stem_direction,
+            )
+        return Markup(contents=command, direction=direction)
+
+    @staticmethod
     def null(direction=Up):
         r'''LilyPond ``\null`` markup command.
 
@@ -1227,7 +1822,7 @@ class Markup(AbjadObject):
             'null',
             )
         return Markup(contents=command, direction=direction)
-    
+
     def override(self, new_property):
         r'''LilyPond ``\override`` markup command.
 
@@ -1301,8 +1896,170 @@ class Markup(AbjadObject):
             )
         return new(self, contents=command)
 
+    def pad_to_box(self, x_extent, y_extent):
+        r'''LilyPond ``pad-to-box`` markup command.
+
+        ..  container:: example
+
+            **Example 1.** Positive extents.
+
+            The following postscript describes a filled box between the
+            x-coordinates of 0 and 10 and the y-coordinates of 0 and 10.
+            Normally, this would be drawn off the edge of the page.
+
+            ::
+
+                >>> up_postscript = markuptools.Postscript()
+                >>> up_postscript = up_postscript.newpath()
+                >>> up_postscript = up_postscript.moveto(0, 0)
+                >>> up_postscript = up_postscript.rlineto(10, 0)
+                >>> up_postscript = up_postscript.rlineto(0, 10)
+                >>> up_postscript = up_postscript.rlineto(-10, 0)
+                >>> up_postscript = up_postscript.closepath()
+                >>> up_postscript = up_postscript.setgray(0.75)
+                >>> up_postscript = up_postscript.fill()
+                >>> up_postscript_markup = up_postscript.as_markup()
+                >>> print(format(up_postscript_markup))
+                \markup {
+                    \postscript
+                        #"
+                        newpath
+                        0 0 moveto
+                        10 0 rlineto
+                        0 10 rlineto
+                        -10 0 rlineto
+                        closepath
+                        0.75 setgray
+                        fill
+                        "
+                    }
+
+            Notice how the top half of the square is cut off. The coordinates
+            of the postscript put most of the drawing off the edge of the page.
+            LilyPond does not know what the size of the postscript is, so it
+            does not attempt to reposition it:
+
+            ::
+
+                >>> show(up_postscript_markup) # doctest: +SKIP
+
+            Wrapping the postscript in a box shows that LilyPond believes the
+            postscript has effectively no x or y extent:
+
+            ::
+
+                >>> show(up_postscript_markup.box()) # doctest: +SKIP
+
+            By giving the postscript markup explicit extents, we can instruct
+            LilyPond to position it properly:
+
+            ::
+
+                >>> up_postscript_markup = up_postscript_markup.pad_to_box(
+                ...     (0, 10), (0, 10))
+                >>> show(up_postscript_markup) # doctest: +SKIP
+
+            Boxing also shows that extents have been applied correctly:
+
+            ::
+
+                >>> show(up_postscript_markup.box()) # doctest: +SKIP
+
+        ..  container:: example
+
+            **Example 2.** Negative extents.
+
+            LilyPond does not appear to handle negative extents in the same was
+            as it handles positive extents.
+
+            The following postscript describes a box of the same shape as in
+            the previous example. However, this box's x- and y-coordinates
+            range between 0 and 10 and 0 and -10 respectively.
+
+            ::
+
+                >>> down_postscript = markuptools.Postscript()
+                >>> down_postscript = down_postscript.newpath()
+                >>> down_postscript = down_postscript.moveto(0, 0)
+                >>> down_postscript = down_postscript.rlineto(10, 0)
+                >>> down_postscript = down_postscript.rlineto(0, -10)
+                >>> down_postscript = down_postscript.rlineto(-10, 0)
+                >>> down_postscript = down_postscript.closepath()
+                >>> down_postscript = down_postscript.setgray(0.75)
+                >>> down_postscript = down_postscript.fill()
+                >>> down_postscript_markup = down_postscript.as_markup()
+                >>> print(format(down_postscript_markup))
+                \markup {
+                    \postscript
+                        #"
+                        newpath
+                        0 0 moveto
+                        10 0 rlineto
+                        0 -10 rlineto
+                        -10 0 rlineto
+                        closepath
+                        0.75 setgray
+                        fill
+                        "
+                    }
+
+            This time, the entire markup appears to display, without being cut
+            off:
+
+            ::
+
+                >>> show(down_postscript_markup) # doctest: +SKIP
+
+            However, boxing the markup shows that LilyPond still believes it to
+            be of 0-height and 0-width. Notice that the box appears in a
+            different corner of the grey square than in the previous example.
+            This corner is the markup *origin*. The grey box in example 2
+            *descends* from the origin, while the grey box in example 1
+            *ascends* from it.
+
+            ::
+
+                >>> show(down_postscript_markup.box()) # doctest: +SKIP
+
+            Giving the postscript markup positive extents does not work:
+
+            ::
+
+                >>> markup = down_postscript_markup.pad_to_box(
+                ...     (0, 10), (0, 10))
+                >>> show(markup.box()) # doctest: +SKIP
+
+            Likewise, giving the postscript markup negative extents also
+            does not work. The negative extents are treated as 0. In this case,
+            the postscript markup is treated as though it had a height of 0:
+
+            ::
+
+                >>> markup = down_postscript_markup.pad_to_box(
+                ...     (0, 10), (0, -10))
+                >>> show(markup.box()) # doctest: +SKIP
+
+            Unfortunately, this means that any part of a postscript-created
+            markup that uses negative coordinates cannot be treated properly by
+            LilyPond's markup spacing logic. To avoid this, only use positive
+            coordinates in postscript.
+
+        Returns new markup.
+        '''
+        from abjad.tools import markuptools
+        contents = self._parse_markup_command_argument(self)
+        x_extent = schemetools.SchemePair(x_extent)
+        y_extent = schemetools.SchemePair(y_extent)
+        command = markuptools.MarkupCommand(
+            'pad-to-box',
+            x_extent,
+            y_extent,
+            contents,
+            )
+        return new(self, contents=command)
+
     def parenthesize(self):
-        r'''LilyPond ``\parenthesie`` markup command.
+        r'''LilyPond ``\parenthesize`` markup command.
 
         ..  container:: example
 
@@ -1332,6 +2089,52 @@ class Markup(AbjadObject):
             contents,
             )
         return new(self, contents=command)
+
+    @staticmethod
+    def postscript(postscript):
+        r'''LilyPond ``\postscript`` markup command.
+
+        ..  container:: example
+
+            ::
+
+                >>> postscript = markuptools.Postscript()
+                >>> postscript = postscript.moveto(1, 1)
+                >>> postscript = postscript.setlinewidth(2.5)
+                >>> postscript = postscript.setdash((2, 1))
+                >>> postscript = postscript.lineto(3, -4)
+                >>> postscript = postscript.stroke()
+                >>> markup = markuptools.Markup.postscript(postscript)
+
+            ::
+
+                >>> print(format(markup))
+                \markup {
+                    \postscript
+                        #"
+                        1 1 moveto
+                        2.5 setlinewidth
+                        [ 2 1 ] 0 setdash
+                        3 -4 lineto
+                        stroke
+                        "
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        Returns new markup.
+        '''
+        from abjad.tools import markuptools
+        if isinstance(postscript, markuptools.Postscript):
+            postscript = str(postscript)
+        assert isinstance(postscript, str)
+        command = markuptools.MarkupCommand(
+            'postscript',
+            postscript,
+            )
+        return Markup(contents=command)
 
     def raise_(self, amount):
         r'''LilyPond ``\raise`` markup command.
@@ -1399,7 +2202,7 @@ class Markup(AbjadObject):
         from abjad.tools import markuptools
         contents = []
         for markup in markups:
-            contents.extend(markup.contents)
+            contents.append(Markup._parse_markup_command_argument(markup))
         command = markuptools.MarkupCommand(
             'right-column',
             contents,
@@ -1440,6 +2243,38 @@ class Markup(AbjadObject):
             )
         return new(self, contents=command)
 
+    def sans(self):
+        r'''LilyPond ``\sans`` markup command.
+
+        ..  container:: example
+
+            ::
+
+                >>> markup = Markup('Allegro assai')
+                >>> markup = markup.sans()
+
+            ::
+
+                >>> print(format(markup))
+                \markup {
+                    \sans
+                        "Allegro assai"
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        Returns new markup.
+        '''
+        from abjad.tools import markuptools
+        contents = self._parse_markup_command_argument(self)
+        command = markuptools.MarkupCommand(
+            'sans',
+            contents,
+            )
+        return new(self, contents=command)
+
     def scale(self, factor_pair):
         r'''LilyPond ``\scale`` markup command.
 
@@ -1474,6 +2309,33 @@ class Markup(AbjadObject):
             contents,
             )
         return new(self, contents=command)
+
+    @staticmethod
+    def sharp():
+        r'''LilyPond ``\sharp`` markup command.
+
+        ..  container:: example
+
+            ::
+
+                >>> markup = Markup.sharp()
+
+            ::
+
+                >>> print(format(markup))
+                \markup {
+                    \sharp
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        Returns new markup.
+        '''
+        from abjad.tools import markuptools
+        command = markuptools.MarkupCommand('sharp')
+        return Markup(contents=command)
 
     def smaller(self):
         r'''LilyPond ``\smaller`` markup command.
@@ -1669,6 +2531,50 @@ class Markup(AbjadObject):
             )
         return new(self, contents=command)
 
+    @staticmethod
+    def vspace(amount):
+        r'''LilyPond ``\vspace`` markup command.
+
+        ..  container:: example
+
+            ::
+
+                >>> markup = Markup.vspace(0.75)
+
+            ::
+
+                >>> f(markup)
+                \markup {
+                    \vspace
+                        #0.75
+                    }
+
+            ::
+
+                >>> show(markup) # doctest: +SKIP
+
+        Returns new markup.
+        '''
+        from abjad.tools import markuptools
+        command = markuptools.MarkupCommand(
+            'vspace',
+            amount,
+            )
+        return Markup(contents=command)
+
+    def whiteout(self):
+        r'''LilyPond ``\whiteout`` markup command.
+
+        Returns new markup.
+        '''
+        from abjad.tools import markuptools
+        contents = self._parse_markup_command_argument(self)
+        command = markuptools.MarkupCommand(
+            'whiteout',
+            contents,
+            )
+        return new(self, contents=command)
+
     def with_color(self, color):
         r'''LilyPond ``\with-color`` markup command.
 
@@ -1692,7 +2598,7 @@ class Markup(AbjadObject):
 
                 >>> show(markup) # doctest: +SKIP
 
-        Returns markup.
+        Returns new markup.
         '''
         from abjad.tools import markuptools
         contents = self._parse_markup_command_argument(self)
@@ -1700,6 +2606,112 @@ class Markup(AbjadObject):
         command = markuptools.MarkupCommand(
             'with-color',
             color,
+            contents,
+            )
+        return new(self, contents=command)
+
+    def with_dimensions(self, x_extent, y_extent):
+        r'''LilyPond ``with-dimensions`` markup command.
+
+        ..  note::
+
+            See the API entry for ``Markup.pad_to_box()`` for an extensive
+            discussion of setting explicit markup extents.
+
+        ..  container:: example
+
+            **Example 1.**
+
+            ::
+
+                >>> up_postscript = markuptools.Postscript()
+                >>> up_postscript = up_postscript.newpath()
+                >>> up_postscript = up_postscript.moveto(0, 0)
+                >>> up_postscript = up_postscript.rlineto(10, 0)
+                >>> up_postscript = up_postscript.rlineto(0, 10)
+                >>> up_postscript = up_postscript.rlineto(-10, 0)
+                >>> up_postscript = up_postscript.closepath()
+                >>> up_postscript = up_postscript.setgray(0.75)
+                >>> up_postscript = up_postscript.fill()
+                >>> up_markup = up_postscript.as_markup()
+
+            ::
+
+                >>> show(up_markup.box()) # doctest: +SKIP
+
+            ::
+
+                >>> up_markup = up_markup.with_dimensions((0, 10), (0, 10))
+                >>> up_markup = up_markup.box()
+                >>> show(up_markup) # doctest: +SKIP
+
+            ::
+
+                >>> up_markup = up_postscript.as_markup()
+                >>> up_markup = up_markup.with_dimensions((0, 20), (0, 20))
+                >>> up_markup = up_markup.box()
+                >>> show(up_markup) # doctest: +SKIP
+
+            ::
+
+                >>> up_markup = up_postscript.as_markup()
+                >>> up_markup = up_markup.with_dimensions((0, 20), (0, -20))
+                >>> up_markup = up_markup.box()
+                >>> show(up_markup) # doctest: +SKIP
+
+        ..  container:: example
+
+            **Example 2.**
+
+            ::
+
+                >>> down_postscript = markuptools.Postscript()
+                >>> down_postscript = down_postscript.newpath()
+                >>> down_postscript = down_postscript.moveto(0, 0)
+                >>> down_postscript = down_postscript.rlineto(10, 0)
+                >>> down_postscript = down_postscript.rlineto(0, -10)
+                >>> down_postscript = down_postscript.rlineto(-10, 0)
+                >>> down_postscript = down_postscript.closepath()
+                >>> down_postscript = down_postscript.setgray(0.75)
+                >>> down_postscript = down_postscript.fill()
+                >>> down_markup = down_postscript.as_markup()
+
+            ::
+
+                >>> show(down_markup.box()) # doctest: +SKIP
+
+            ::
+
+                >>> down_markup = down_markup.with_dimensions((0, 10), (0, 10))
+                >>> down_markup = down_markup.box()
+                >>> show(down_markup) # doctest: +SKIP
+
+            ::
+
+                >>> down_markup = down_postscript.as_markup()
+                >>> down_markup = down_markup.with_dimensions(
+                ...     (0, 10), (0, -10))
+                >>> down_markup = down_markup.box()
+                >>> show(down_markup) # doctest: +SKIP
+
+            ::
+
+                >>> down_markup = down_postscript.as_markup()
+                >>> down_markup = down_markup.with_dimensions(
+                ...     (-5, 15), (5, -15))
+                >>> down_markup = down_markup.box()
+                >>> show(down_markup) # doctest: +SKIP
+
+        Returns new markup.
+        '''
+        from abjad.tools import markuptools
+        contents = self._parse_markup_command_argument(self)
+        x_extent = schemetools.SchemePair(x_extent)
+        y_extent = schemetools.SchemePair(y_extent)
+        command = markuptools.MarkupCommand(
+            'with-dimensions',
+            x_extent,
+            y_extent,
             contents,
             )
         return new(self, contents=command)

@@ -30,23 +30,33 @@ class Context(Container):
 
     ### CLASS VARIABLES ###
 
+    __documentation_section__ = 'Contexts'
+
     __slots__ = (
         '_context_name',
         '_consists_commands',
         '_remove_commands',
         '_is_nonsemantic',
-        '_name',
         )
 
     ### INITIALIZER ###
 
-    def __init__(self, music=None, context_name='Context', name=None):
-        Container.__init__(self, music=music)
+    def __init__(
+        self,
+        music=None,
+        context_name='Context',
+        is_simultaneous=None,
+        name=None,
+        ):
+        Container.__init__(
+            self,
+            is_simultaneous=is_simultaneous,
+            music=music,
+            name=name,
+            )
         self.context_name = context_name
         self._consists_commands = []
         self._remove_commands = []
-        self._name = None
-        self.name = name
         self.is_nonsemantic = False
 
     ### SPECIAL METHODS ###
@@ -56,8 +66,12 @@ class Context(Container):
 
         ::
 
-            >>> context
-            Context()
+            >>> context = scoretools.Context(
+            ...     name='MeterVoice',
+            ...     context_name='TimeSignatureContext',
+            ...     )
+            >>> repr(context)
+            'Context()'
 
         Returns string.
         '''
@@ -225,9 +239,12 @@ class Context(Container):
         return self._context_name
 
     @context_name.setter
-    def context_name(self, arg):
-        assert isinstance(arg, str)
-        self._context_name = arg
+    def context_name(self, expr):
+        if expr is None:
+            expr = type(self).__name__
+        else:
+            expr = str(expr)
+        self._context_name = expr
 
     @property
     def is_nonsemantic(self):
@@ -300,31 +317,6 @@ class Context(Container):
         Returns boolean.
         '''
         return not self.is_nonsemantic
-
-    @property
-    def name(self):
-        r'''Gets and sets name of context.
-
-        Returns string or none.
-        '''
-        return self._name
-
-    @name.setter
-    def name(self, arg):
-        assert isinstance(arg, (str, type(None)))
-        old_name = self._name
-        for parent in self._get_parentage(include_self=False):
-            named_children = parent._named_children
-            if old_name is not None:
-                named_children[old_name].remove(self)
-                if not named_children[old_name]:
-                    del named_children[old_name]
-            if arg is not None:
-                if arg not in named_children:
-                    named_children[arg] = [self]
-                else:
-                    named_children[arg].append(self)
-        self._name = arg
 
     @property
     def remove_commands(self):

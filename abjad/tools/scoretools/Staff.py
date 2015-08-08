@@ -29,15 +29,23 @@ class Staff(Context):
 
     ### CLASS VARIABLES ###
 
-    __slots__ = (
-        )
+    __documentation_section__ = 'Contexts'
+
+    __slots__ = ()
 
     ### INITIALIZER ###
 
-    def __init__(self, music=None, context_name='Staff', name=None):
+    def __init__(
+        self,
+        music=None,
+        context_name='Staff',
+        is_simultaneous=None,
+        name=None,
+        ):
         Context.__init__(
             self,
             music=music,
             context_name=context_name,
+            is_simultaneous=is_simultaneous,
             name=name,
             )

@@ -1,11 +1,14 @@
 # -*- encoding: utf-8 -*-
+from abjad.tools.abctools import AbjadObject
 
 
-class LilyPondFormatManager(object):
+class LilyPondFormatManager(AbjadObject):
     r'''Manages LilyPond formatting logic.
     '''
 
     ### CLASS VARIABLES ###
+
+    __documentation_section__ = 'LilyPond formatting'
 
     lilypond_color_constants = (
         'black',
@@ -33,6 +36,60 @@ class LilyPondFormatManager(object):
     indent = '    '
 
     ### PRIVATE METHODS ###
+
+    @staticmethod
+    def _collect_indicators(component):
+        from abjad.tools import markuptools
+        from abjad.tools.topleveltools import inspect_
+        expressions = []
+        for parent in inspect_(component).get_parentage(include_self=True):
+            result = inspect_(parent).get_indicators(unwrap=False)
+            expressions.extend(result)
+            result = parent._get_spanner_indicators(unwrap=False)
+            expressions.extend(result)
+        up_markup = []
+        down_markup = []
+        neutral_markup = []
+        scoped_expressions = []
+        nonscoped_expressions = []
+        # classify expressions attached to component
+        for expression in expressions:
+            # skip nonprinting indicators like annotation
+            indicator = expression.indicator
+            if not hasattr(indicator, '_lilypond_format') and \
+                not hasattr(indicator, '_get_lilypond_format_bundle'):
+                continue
+            elif expression.is_annotation:
+                continue
+            # skip comments and commands unless attached directly to us
+            elif expression.scope is None and \
+                hasattr(expression.indicator, '_format_leaf_children') and \
+                not getattr(expression.indicator, '_format_leaf_children') and\
+                expression.component is not component:
+                continue
+            # store markup
+            elif isinstance(expression.indicator, markuptools.Markup):
+                if expression.indicator.direction == Up:
+                    up_markup.append(expression.indicator)
+                elif expression.indicator.direction == Down:
+                    down_markup.append(expression.indicator)
+                elif expression.indicator.direction in (Center, None):
+                    neutral_markup.append(expression.indicator)
+            # store scoped expressions
+            elif expression.scope is not None:
+                if expression._is_formattable_for_component(component):
+                    scoped_expressions.append(expression)
+            # store nonscoped expressions
+            else:
+                nonscoped_expressions.append(expression)
+        indicators = (
+            up_markup,
+            down_markup,
+            neutral_markup,
+            scoped_expressions,
+            nonscoped_expressions,
+            )
+        return indicators
 
     @staticmethod
     def _populate_context_setting_format_contributions(component, bundle):
@@ -92,54 +149,45 @@ class LilyPondFormatManager(object):
 
     @staticmethod
     def _populate_indicator_format_contributions(component, bundle):
+        manager = LilyPondFormatManager
+        (
+            up_markup,
+            down_markup,
+            neutral_markup,
+            scoped_expressions,
+            nonscoped_expressions,
+            ) = LilyPondFormatManager._collect_indicators(component)
+        manager._populate_markup_format_contributions(
+            component,
+            bundle,
+            up_markup,
+            down_markup,
+            neutral_markup,
+            )
+        manager._populate_scoped_expression_format_contributions(
+            component,
+            bundle,
+            scoped_expressions,
+            )
+        manager._populate_nonscoped_expression_format_contributions(
+            component,
+            bundle,
+            nonscoped_expressions,
+            )
+
+    @staticmethod
+    def _populate_markup_format_contributions(
+        component,
+        bundle,
+        up_markup,
+        down_markup,
+        neutral_markup,
+        ):
         from abjad.tools import markuptools
-        from abjad.tools.topleveltools import inspect_
-        expressions = []
-        for parent in inspect_(component).get_parentage(include_self=True):
-            result = inspect_(parent).get_indicators(unwrap=False)
-            expressions.extend(result)
-            result = parent._get_spanner_indicators(unwrap=False)
-            expressions.extend(result)
-        up_markup = []
-        down_markup = []
-        neutral_markup = []
-        scoped_expressions = []
-        nonscoped_expressions = []
-        # classify expressions attached to component
-        for expression in expressions:
-            # skip nonprinting indicators like annotation
-            if not hasattr(expression.indicator, '_lilypond_format') and \
-                not hasattr(expression.indicator, '_lilypond_format_bundle'):
-                continue
-            elif expression.is_annotation:
-                continue
-            # skip comments and commands unless attached directly to us
-            elif expression.scope is None and \
-                hasattr(expression.indicator, '_format_leaf_children') and \
-                not getattr(expression.indicator, '_format_leaf_children') and\
-                expression.component is not component:
-                continue
-            # store markup
-            elif isinstance(expression.indicator, markuptools.Markup):
-                if expression.indicator.direction == Up:
-                    up_markup.append(expression.indicator)
-                elif expression.indicator.direction == Down:
-                    down_markup.append(expression.indicator)
-                elif expression.indicator.direction in (Center, None):
-                    neutral_markup.append(expression.indicator)
-            # store scoped expressions
-            elif expression.scope is not None:
-                if expression._is_formattable_for_component(component):
-                    scoped_expressions.append(expression)
-            # store nonscoped expressions
-            else:
-                nonscoped_expressions.append(expression)
-        # handle markup
         for markup_list in (up_markup, down_markup, neutral_markup):
             if not markup_list:
                 continue
             elif 1 < len(markup_list):
-                contents = []
                 direction = markup_list[0].direction
                 if direction is None:
                     direction = '-'
@@ -159,24 +207,37 @@ class LilyPondFormatManager(object):
                 else:
                     format_pieces = markup_list[0]._get_format_pieces()
                     bundle.right.markup.extend(format_pieces)
-        # handle scoped expressions
+
+    @staticmethod
+    def _populate_nonscoped_expression_format_contributions(
+        component,
+        bundle,
+        nonscoped_expressions,
+        ):
+        for nonscoped_expression in nonscoped_expressions:
+            indicator = nonscoped_expression.indicator
+            if hasattr(indicator, '_get_lilypond_format_bundle'):
+                indicator_bundle = indicator._get_lilypond_format_bundle(
+                    component)
+                if indicator_bundle is not None:
+                    bundle.update(indicator_bundle)
+
+    @staticmethod
+    def _populate_scoped_expression_format_contributions(
+        component,
+        bundle,
+        scoped_expressions,
+        ):
         for scoped_expression in scoped_expressions:
             format_pieces = scoped_expression._get_format_pieces()
             format_slot = scoped_expression.indicator._format_slot
             bundle.get(format_slot).indicators.extend(format_pieces)
-        # handle nonscoped expressions
-        for nonscoped_expression in nonscoped_expressions:
-            indicator = nonscoped_expression.indicator
-            indicator_format_bundle = getattr(
-                indicator,
-                '_lilypond_format_bundle',
-                None,
-                )
-            if indicator_format_bundle is not None:
-                bundle.update(indicator_format_bundle)
 
     @staticmethod
-    def _populate_spanner_format_contributions(component, bundle):
+    def _populate_spanner_format_contributions(
+        component,
+        bundle,
+        ):
         pairs = []
         for spanner in component._get_parentage()._get_spanners():
             spanner_bundle = spanner._get_lilypond_format_bundle(component)

@@ -1,103 +1,115 @@
 # -*- encoding: utf-8 -*-
-import copy
-from abjad.tools.abctools.AbjadObject import AbjadObject
+from abjad.tools.abctools.AbjadValueObject import AbjadValueObject
 
 
-class LilyPondComment(AbjadObject):
+class LilyPondComment(AbjadValueObject):
     r'''A LilyPond comment.
 
-    ::
+    ..  container:: example
 
-        >>> note = Note("c'4")
-        >>> comment = indicatortools.LilyPondComment('this is a comment')
-        >>> attach(comment, note)
-        >>> show(note) # doctest: +SKIP
+        **Example 1.** Two-word comment:
 
-    ..  doctest::
+        ::
 
-        >>> print(format(note))
-        % this is a comment
-        c'4
+            >>> note = Note("c'4")
+            >>> comment = indicatortools.LilyPondComment('a comment')
+            >>> attach(comment, note)
+            >>> show(note) # doctest: +SKIP
 
-    Initializes LilyPond comment from contents string;
-    or contents string and format slot;
-    or from other LilyPond comment;
-    or from other LilyPond comment and format slot.
+        ..  doctest::
+
+            >>> print(format(note))
+            % a comment
+            c'4
+
+    ..  container:: example
+
+        **Example 2.** Three-word comment:
+
+        ::
+
+            >>> note = Note("c'4")
+            >>> comment = indicatortools.LilyPondComment('yet another comment')
+            >>> attach(comment, note)
+            >>> show(note) # doctest: +SKIP
+
+        ..  doctest::
+
+            >>> print(format(note))
+            % yet another comment
+            c'4
+
     '''
 
     ### CLASS VARIABLES ###
 
     __slots__ = (
         '_contents_string',
+        '_default_scope',
         '_format_slot',
         )
 
     _format_leaf_children = False
 
+    _allowable_format_slots = (
+        'after',
+        'before',
+        'closing',
+        'opening',
+        'right',
+        )
+
     ### INITIALIZER ###
 
-    def __init__(self, *args):
-        if len(args) == 1 and isinstance(args[0], type(self)):
-            contents_string = copy.copy(args[0].contents_string)
-            format_slot = copy.copy(args[0].format_slot)
-        elif len(args) == 1 and not isinstance(args[0], type(self)):
-            contents_string = copy.copy(args[0])
-            format_slot = None
-        elif len(args) == 2 and isinstance(args[0], type(self)):
-            contents_string = copy.copy(args[0].contents_string)
-            format_slot = args[1]
-        elif len(args) == 2 and not isinstance(args[0], type(self)):
-            contents_string = args[0]
-            format_slot = args[1]
-        elif len(args) == 0:
-            contents_string = 'foo'
-            format_slot = None
+    def __init__(self, contents_string=None, format_slot=None):
+        if isinstance(contents_string, type(self)):
+            expr = contents_string
+            contents_string = expr.contents_string
+            format_slot = format_slot or expr.format_slot
         else:
-            message = 'can not initialize {} from {!r}.'
-            message = message.format(type(self).__name__, args)
-            raise ValueError(message)
-        format_slot = format_slot or 'before'
+            contents_string = str(contents_string)
         self._contents_string = contents_string
+        format_slot = format_slot or 'before'
+        assert format_slot in self._allowable_format_slots, repr(format_slot)
         self._format_slot = format_slot
 
     ### SPECIAL METHODS ###
 
-    def __copy__(self, *args):
-        r'''Copies LilyPond comment.
-
-        Returns new LilyPond comment.
-        '''
-        new = type(self)(self._contents_string)
-        new._format_slot = self.format_slot
-        return new
-
-    def __eq__(self, expr):
-        r'''Is true when `expr` is a LilyPond comment with contents string
-        equal to that of this LilyPond comment. Otherwise false.
-
-        Returns boolean.
-        '''
-        if isinstance(expr, type(self)):
-            return self._contents_string == expr._contents_string
-        return False
-
-    def __hash__(self):
-        r'''Hashes LilyPond comment.
-
-        Required to be explicitly re-defined on Python 3 if __eq__ changes.
-
-        Returns integer.
-        '''
-        return super(LilyPondComment, self).__hash__()
-
     def __str__(self):
-        r'''Gets string format of LilyPond comment.
+        r'''Gets string representation of LilyPond comment.
+
+        ..  container:: example
+
+            **Example 1.** Two-word comment:
+
+            ::
+
+                >>> comment = indicatortools.LilyPondComment('a comment')
+                >>> str(comment)
+                '% a comment'
+
+        ..  container:: example
+
+            **Example 2.** Three-word comment:
+
+            ::
+
+                >>> comment = indicatortools.LilyPondComment('yet another comment')
+                >>> str(comment)
+                '% yet another comment'
 
         Returns string.
         '''
-        from abjad.tools import stringtools
-        command = self.contents_string
-        return r'%% %s' % command
+        return r'% {}'.format(self.contents_string)
+
+    ### PRIVATE METHODS ###
+
+    def _get_lilypond_format_bundle(self, component=None):
+        from abjad.tools import systemtools
+        lilypond_format_bundle = systemtools.LilyPondFormatBundle()
+        format_slot = lilypond_format_bundle.get(self.format_slot)
+        format_slot.comments.append(str(self))
+        return lilypond_format_bundle
 
     ### PRIVATE PROPERTIES ###
 
@@ -109,35 +121,31 @@ class LilyPondComment(AbjadObject):
     def _lilypond_format(self):
         return str(self)
 
-    @property
-    def _lilypond_format_bundle(self):
-        from abjad.tools import systemtools
-        lilypond_format_bundle = systemtools.LilyPondFormatBundle()
-        format_slot = lilypond_format_bundle.get(self.format_slot)
-        format_slot.comments.append(str(self))
-        return lilypond_format_bundle
-
-    @property
-    def _storage_format_specification(self):
-        from abjad.tools import systemtools
-        positional_argument_values = [self.contents_string]
-        if self.format_slot is not None:
-            positional_argument_values.append(self.format_slot)
-        return systemtools.StorageFormatSpecification(
-            self,
-            positional_argument_values=positional_argument_values,
-            )
-
     ### PUBLIC PROPERTIES ###
 
     @property
     def contents_string(self):
         r'''Contents string of LilyPond comment.
 
-        ::
+        ..  container:: example
 
-            >>> comment.contents_string
-            'this is a comment'
+            **Example 1.** Two-word comment:
+
+            ::
+
+                >>> comment = indicatortools.LilyPondComment('a comment')
+                >>> comment.contents_string
+                'a comment'
+
+        ..  container:: example
+
+            **Example 2.** Three-word comment:
+
+            ::
+
+                >>> comment = indicatortools.LilyPondComment('yet another comment')
+                >>> comment.contents_string
+                'yet another comment'
 
         Returns string.
         '''
@@ -147,11 +155,53 @@ class LilyPondComment(AbjadObject):
     def format_slot(self):
         r'''Format slot of LilyPond comment.
 
-        ::
+        ..  container:: example
 
-            >>> comment.format_slot
-            'before'
+            **Example 1.** Two-word comment:
+
+            ::
+
+                >>> comment = indicatortools.LilyPondComment('a comment')
+                >>> comment.format_slot
+                'before'
+
+        ..  container:: example
+
+            **Example 2.** Three-word comment:
+
+            ::
+
+                >>> comment = indicatortools.LilyPondComment('yet another comment')
+                >>> comment.format_slot
+                'before'
+
+        Defaults to ``'before'``.
+
+        Set to allowable format slot string.
 
         Returns string.
         '''
         return self._format_slot
+
+    ### PUBLIC METHODS ###
+
+    @staticmethod
+    def list_allowable_format_slots():
+        r'''Lists allowable format slots.
+
+        ..  container:: example
+
+            **Example 1.** Default:
+
+                >>> commands = indicatortools.LilyPondComment.list_allowable_format_slots()
+                >>> for command in commands:
+                ...     command
+                'after'
+                'before'
+                'closing'
+                'opening'
+                'right'
+
+        Returns tuple of strings.
+        '''
+        return LilyPondComment._allowable_format_slots

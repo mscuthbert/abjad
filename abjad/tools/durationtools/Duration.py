@@ -1,9 +1,12 @@
 # -*- encoding: utf-8 -*-
+import copy
 import fractions
 import math
 import re
 from abjad.tools import mathtools
 from abjad.tools.abctools.AbjadObject import AbjadObject
+from abjad.tools.topleveltools.override import override
+from abjad.tools.topleveltools.set_ import set_
 
 
 class Duration(AbjadObject, fractions.Fraction):
@@ -11,7 +14,7 @@ class Duration(AbjadObject, fractions.Fraction):
 
     ..  container:: example
 
-        Initializes from integer numerator:
+        **Example 1.** Initializes from integer numerator:
 
         ::
 
@@ -20,7 +23,7 @@ class Duration(AbjadObject, fractions.Fraction):
 
     ..  container:: example
 
-        Initializes from integer numerator and denominator:
+        **Example 2.** Initializes from integer numerator and denominator:
 
         ::
 
@@ -29,7 +32,7 @@ class Duration(AbjadObject, fractions.Fraction):
 
     ..  container:: example
 
-        Initializes from integer-equivalent numeric numerator:
+        **Example 3.** Initializes from integer-equivalent numeric numerator:
 
         ::
 
@@ -38,7 +41,8 @@ class Duration(AbjadObject, fractions.Fraction):
 
     ..  container:: example
 
-        Initializes from integer-equivalent numeric numerator and denominator:
+        **Example 4.** Initializes from integer-equivalent numeric numerator 
+        and denominator:
 
         ::
 
@@ -47,7 +51,7 @@ class Duration(AbjadObject, fractions.Fraction):
 
     ..  container:: example
 
-        Initializes from integer-equivalent singleton:
+        **Example 5.** Initializes from integer-equivalent singleton:
 
         ::
 
@@ -56,7 +60,7 @@ class Duration(AbjadObject, fractions.Fraction):
 
     ..  container:: example
 
-        Initializes from integer-equivalent pair:
+        **Example 6.** Initializes from integer-equivalent pair:
 
         ::
 
@@ -65,7 +69,7 @@ class Duration(AbjadObject, fractions.Fraction):
 
     ..  container:: example
 
-        Initializes from other duration:
+        **Example 7.** Initializes from other duration:
 
         ::
 
@@ -74,7 +78,7 @@ class Duration(AbjadObject, fractions.Fraction):
 
     ..  container:: example
 
-        Intializes from fraction:
+        **Example 8.** Intializes from fraction:
 
         ::
 
@@ -83,7 +87,7 @@ class Duration(AbjadObject, fractions.Fraction):
 
     ..  container:: example
 
-        Initializes from solidus string:
+        **Example 9.** Initializes from solidus string:
 
         ::
 
@@ -92,7 +96,7 @@ class Duration(AbjadObject, fractions.Fraction):
 
     ..  container:: example
 
-        Initializes from nonreduced fraction:
+        **Example 10.** Initializes from nonreduced fraction:
 
         ::
 
@@ -101,7 +105,7 @@ class Duration(AbjadObject, fractions.Fraction):
 
     ..  container:: example
 
-        Durations inherit from built-in fraction:
+        **Example 11.** Durations inherit from built-in fraction:
 
         ::
 
@@ -110,7 +114,7 @@ class Duration(AbjadObject, fractions.Fraction):
 
     ..  container:: example
 
-        Durations are numeric:
+        **Example 12.** Durations are numeric:
 
         ::
 
@@ -123,11 +127,15 @@ class Duration(AbjadObject, fractions.Fraction):
 
     '''
 
+    ### CLASS VARIABLES ###
+
+    __slots__ = (
+        )
+
     ### CONSTRUCTOR ###
 
     def __new__(cls, *args):
-        from abjad.tools import sequencetools
-        if (len(args) == 1 and 
+        if (len(args) == 1 and
             isinstance(args[0], mathtools.NonreducedFraction)):
             return fractions.Fraction.__new__(cls, *args[0].pair)
         elif len(args) == 1 and hasattr(args[0], 'duration'):
@@ -145,15 +153,15 @@ class Duration(AbjadObject, fractions.Fraction):
                 cls, args[0].numerator, args[0].denominator)
         except AttributeError:
             pass
-        if len(args) == 1 and \
-            mathtools.is_integer_equivalent_singleton(args[0]):
+        if (len(args) == 1 and
+            mathtools.is_integer_equivalent_singleton(args[0])):
             self = fractions.Fraction.__new__(cls, int(args[0][0]))
-        elif len(args) == 1 and \
-            mathtools.is_fraction_equivalent_pair(args[0]):
+        elif (len(args) == 1 and
+            mathtools.is_fraction_equivalent_pair(args[0])):
             self = fractions.Fraction.__new__(
                 cls, int(args[0][0]), int(args[0][1]))
-        elif len(args) == 1 and \
-            isinstance(args[0], str) and not '/' in args[0]:
+        elif (len(args) == 1 and
+            isinstance(args[0], str) and not '/' in args[0]):
             result = Duration._initialize_from_lilypond_duration_string(
                 args[0])
             self = fractions.Fraction.__new__(cls, result)
@@ -197,8 +205,8 @@ class Duration(AbjadObject, fractions.Fraction):
 
         Returns duration.
         '''
-        if len(args) == 1 and \
-            isinstance(args[0], mathtools.NonreducedFraction):
+        if (len(args) == 1 and
+            isinstance(args[0], mathtools.NonreducedFraction)):
             result = args[0].__radd__(self)
         else:
             result = type(self)(fractions.Fraction.__add__(self, *args))
@@ -270,7 +278,7 @@ class Duration(AbjadObject, fractions.Fraction):
     def __hash__(self):
         r'''Hashes duration.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''
@@ -322,8 +330,8 @@ class Duration(AbjadObject, fractions.Fraction):
 
         Returns duration or nonreduced fraction.
         '''
-        if len(args) == 1 and \
-            isinstance(args[0], mathtools.NonreducedFraction):
+        if (len(args) == 1 and
+            isinstance(args[0], mathtools.NonreducedFraction)):
             result = args[0].__rmul__(self)
         else:
             result = type(self)(fractions.Fraction.__mul__(self, *args))
@@ -425,8 +433,8 @@ class Duration(AbjadObject, fractions.Fraction):
 
         Returns new duration.
         '''
-        if len(args) == 1 and \
-            isinstance(args[0], mathtools.NonreducedFraction):
+        if (len(args) == 1 and
+            isinstance(args[0], mathtools.NonreducedFraction)):
             return args[0].__rsub__(self)
         else:
             return type(self)(fractions.Fraction.__sub__(self, *args))
@@ -514,6 +522,42 @@ class Duration(AbjadObject, fractions.Fraction):
             rational += addend
         return rational
 
+    @staticmethod
+    def _make_markup_score_block(selection):
+        from abjad.tools import lilypondfiletools
+        from abjad.tools import schemetools
+        from abjad.tools import scoretools
+        selection = copy.deepcopy(selection)
+        staff = scoretools.Staff(selection)
+        staff.context_name = 'RhythmicStaff'
+        staff.remove_commands.append('Time_signature_engraver')
+        staff.remove_commands.append('Staff_symbol_engraver')
+        override(staff).stem.direction = Up
+        #override(staff).stem.length = 4
+        override(staff).stem.length = 5
+        override(staff).tuplet_bracket.bracket_visibility = True
+        override(staff).tuplet_bracket.direction = Up
+        override(staff).tuplet_bracket.padding = 1.25
+        override(staff).tuplet_bracket.shorten_pair = (-1, -1.5)
+        scheme = schemetools.Scheme('tuplet-number::calc-fraction-text')
+        override(staff).tuplet_number.text = scheme
+        set_(staff).tuplet_full_length = True
+        layout_block = lilypondfiletools.Block(name='layout')
+        layout_block.indent = 0
+        layout_block.ragged_right = True
+        score = scoretools.Score([staff])
+        override(score).spacing_spanner.spacing_increment = 0.5
+        set_(score).proportional_notation_duration = False
+        return score, layout_block
+
+    @staticmethod
+    def _to_score_markup(selection):
+        from abjad.tools import markuptools
+        staff, layout_block = Duration._make_markup_score_block(selection)
+        command = markuptools.MarkupCommand('score', [staff, layout_block])
+        markup = markuptools.Markup(command)
+        return markup
+
     ### PUBLIC PROPERTIES ###
 
     @property
@@ -535,7 +579,7 @@ class Duration(AbjadObject, fractions.Fraction):
             ...         string = '{!s}\t{}'
             ...         string = string.format(sixteenths, '--')
             ...         print(string)
-            ... 
+            ...
             1/16    0
             2/16    0
             3/16    1
@@ -575,7 +619,7 @@ class Duration(AbjadObject, fractions.Fraction):
             ...     result = duration.equal_or_greater_assignable
             ...     sixteenths = duration.with_denominator(16)
             ...     print('{!s}\t{!s}'.format(sixteenths, result))
-            ... 
+            ...
             1/16    1/16
             2/16    1/8
             3/16    3/16
@@ -615,7 +659,7 @@ class Duration(AbjadObject, fractions.Fraction):
             ...     result = duration.equal_or_greater_power_of_two
             ...     sixteenths = duration.with_denominator(16)
             ...     print('{!s}\t{!s}'.format(sixteenths, result))
-            ... 
+            ...
             1/16    1/16
             2/16    1/8
             3/16    1/4
@@ -649,7 +693,7 @@ class Duration(AbjadObject, fractions.Fraction):
             ...     result = duration.equal_or_lesser_assignable
             ...     sixteenths = duration.with_denominator(16)
             ...     print('{!s}\t{!s}'.format(sixteenths, result))
-            ... 
+            ...
             1/16    1/16
             2/16    1/8
             3/16    3/16
@@ -690,7 +734,7 @@ class Duration(AbjadObject, fractions.Fraction):
             ...     result = duration.equal_or_lesser_power_of_two
             ...     sixteenths = duration.with_denominator(16)
             ...     print('{!s}\t{!s}'.format(sixteenths, result))
-            ... 
+            ...
             1/16    1/16
             2/16    1/8
             3/16    1/8
@@ -723,7 +767,7 @@ class Duration(AbjadObject, fractions.Fraction):
             ...     duration = Duration(n, 64)
             ...     sixty_fourths = duration.with_denominator(64)
             ...     print('{!s}\t{}'.format(sixty_fourths, duration.flag_count))
-            ... 
+            ...
             1/64    4
             2/64    3
             3/64    3
@@ -759,7 +803,7 @@ class Duration(AbjadObject, fractions.Fraction):
             ...     duration = Duration(1, n)
             ...     result = duration.has_power_of_two_denominator
             ...     print('{!s}\t{}'.format(duration, result))
-            ... 
+            ...
             1       True
             1/2     True
             1/3     False
@@ -792,7 +836,7 @@ class Duration(AbjadObject, fractions.Fraction):
             ...     duration = Duration(1, denominator)
             ...     result = duration.implied_prolation
             ...     print('{!s}\t{!s}'.format(duration, result))
-            ... 
+            ...
             1       1
             1/2     1
             1/3     2/3
@@ -827,7 +871,7 @@ class Duration(AbjadObject, fractions.Fraction):
             ...     duration = Duration(numerator, 16)
             ...     sixteenths = duration.with_denominator(16)
             ...     print('{!s}\t{}'.format(sixteenths, duration.is_assignable))
-            ... 
+            ...
             0/16    False
             1/16    True
             2/16    True
@@ -866,8 +910,6 @@ class Duration(AbjadObject, fractions.Fraction):
 
         Returns string.
         '''
-        from abjad.tools import durationtools
-
         if not self.is_assignable:
             raise AssignabilityError(self)
         undotted_rational = self.equal_or_lesser_power_of_two
@@ -917,7 +959,7 @@ class Duration(AbjadObject, fractions.Fraction):
             ...     string = '{!s}\t{}'
             ...     string = string.format(duration, duration.prolation_string)
             ...     print(string)
-            ... 
+            ...
             1       1:1
             2       1:2
             1/2     2:1
@@ -1056,6 +1098,161 @@ class Duration(AbjadObject, fractions.Fraction):
             clock_string = "{}'{}\"".format(minutes, remaining_seconds)
         return clock_string
 
+    def to_score_markup(self):
+        r'''Changes duration to score markup.
+
+        ..  container:: example
+
+            **Example 1.** Changes assignable duration to score markup:
+
+            ::
+
+                >>> markup = Duration(3, 16).to_score_markup()
+                >>> show(markup) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> f(markup)
+                \markup {
+                    \score
+                        {
+                            \new Score \with {
+                                \override SpacingSpanner #'spacing-increment = #0.5
+                                proportionalNotationDuration = ##f
+                            } <<
+                                \new RhythmicStaff \with {
+                                    \remove Time_signature_engraver
+                                    \remove Staff_symbol_engraver
+                                    \override Stem #'direction = #up
+                                    \override Stem #'length = #5
+                                    \override TupletBracket #'bracket-visibility = ##t
+                                    \override TupletBracket #'direction = #up
+                                    \override TupletBracket #'padding = #1.25
+                                    \override TupletBracket #'shorten-pair = #'(-1 . -1.5)
+                                    \override TupletNumber #'text = #tuplet-number::calc-fraction-text
+                                    tupletFullLength = ##t
+                                } {
+                                    c'8.
+                                }
+                            >>
+                            \layout {
+                                indent = #0
+                                ragged-right = ##t
+                            }
+                        }
+                    }
+
+        ..  container:: example
+
+            **Example 2.** Changes nonassignable duration to score markup:
+
+            ::
+
+                >>> markup = Duration(5, 16).to_score_markup()
+                >>> show(markup) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> f(markup)
+                \markup {
+                    \score
+                        {
+                            \new Score \with {
+                                \override SpacingSpanner #'spacing-increment = #0.5
+                                proportionalNotationDuration = ##f
+                            } <<
+                                \new RhythmicStaff \with {
+                                    \remove Time_signature_engraver
+                                    \remove Staff_symbol_engraver
+                                    \override Stem #'direction = #up
+                                    \override Stem #'length = #5
+                                    \override TupletBracket #'bracket-visibility = ##t
+                                    \override TupletBracket #'direction = #up
+                                    \override TupletBracket #'padding = #1.25
+                                    \override TupletBracket #'shorten-pair = #'(-1 . -1.5)
+                                    \override TupletNumber #'text = #tuplet-number::calc-fraction-text
+                                    tupletFullLength = ##t
+                                } {
+                                    c'4 ~
+                                    c'16
+                                }
+                            >>
+                            \layout {
+                                indent = #0
+                                ragged-right = ##t
+                            }
+                        }
+                    }
+
+        ..  container:: example
+
+            **Example 3.** Override tuplet number text like this:
+
+            ::
+
+                >>> tuplet = Tuplet((5, 7), "c'16 c' c' c' c' c' c'")
+                >>> attach(Beam(), tuplet[:])
+                >>> staff = Staff([tuplet], context_name='RhythmicStaff')
+                >>> duration = inspect_(tuplet).get_duration()
+                >>> markup = duration.to_score_markup()
+                >>> markup = markup.scale((0.75, 0.75))
+                >>> override(tuplet).tuplet_number.text = markup
+                >>> show(staff) # doctest: +SKIP
+
+            ..  doctest::
+
+                >>> f(staff)
+                \new RhythmicStaff {
+                    \override TupletNumber #'text = \markup {
+                        \scale
+                            #'(0.75 . 0.75)
+                            \score
+                                {
+                                    \new Score \with {
+                                        \override SpacingSpanner #'spacing-increment = #0.5
+                                        proportionalNotationDuration = ##f
+                                    } <<
+                                        \new RhythmicStaff \with {
+                                            \remove Time_signature_engraver
+                                            \remove Staff_symbol_engraver
+                                            \override Stem #'direction = #up
+                                            \override Stem #'length = #5
+                                            \override TupletBracket #'bracket-visibility = ##t
+                                            \override TupletBracket #'direction = #up
+                                            \override TupletBracket #'padding = #1.25
+                                            \override TupletBracket #'shorten-pair = #'(-1 . -1.5)
+                                            \override TupletNumber #'text = #tuplet-number::calc-fraction-text
+                                            tupletFullLength = ##t
+                                        } {
+                                            c'4 ~
+                                            c'16
+                                        }
+                                    >>
+                                    \layout {
+                                        indent = #0
+                                        ragged-right = ##t
+                                    }
+                                }
+                        }
+                    \times 5/7 {
+                        c'16 [
+                        c'16
+                        c'16
+                        c'16
+                        c'16
+                        c'16
+                        c'16 ]
+                    }
+                    \revert TupletNumber #'text
+                }
+
+        Returns markup.
+        '''
+        from abjad.tools import scoretools
+        notes = scoretools.make_leaves([0], [self])
+        markup = self._to_score_markup(notes)
+        return markup
+
     def with_denominator(self, denominator):
         r'''Change this duration to new duration with `denominator`.
 
@@ -1064,7 +1261,7 @@ class Duration(AbjadObject, fractions.Fraction):
             >>> duration = Duration(1, 4)
             >>> for denominator in (4, 8, 16, 32):
             ...     print(duration.with_denominator(denominator))
-            ... 
+            ...
             1/4
             2/8
             4/16

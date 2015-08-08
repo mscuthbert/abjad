@@ -2,6 +2,7 @@
 from abjad.tools import durationtools
 from abjad.tools import mathtools
 from abjad.tools import selectiontools
+from abjad.tools import sequencetools
 from abjad.tools.topleveltools import iterate
 from abjad.tools.scoretools.Component import Component
 
@@ -9,10 +10,9 @@ from abjad.tools.scoretools.Component import Component
 class Container(Component):
     r'''An iterable container of music.
 
-    **Example**:
-
     ..  container:: example
 
+        **Example 1.** A container:
         ::
 
             >>> container = Container("c'4 e'4 d'4 e'8 f'8")
@@ -33,18 +33,21 @@ class Container(Component):
 
     ### CLASS VARIABLES ###
 
+    __documentation_section__ = 'Containers'
+
     __slots__ = (
         '_formatter',
         '_music',
         '_named_children',
+        '_name',
         '_is_simultaneous',
         )
 
     ### INITIALIZER ###
 
-    def __init__(self, music=None, is_simultaneous=None):
+    def __init__(self, music=None, is_simultaneous=None, name=None):
         music = music or []
-        Component.__init__(self)
+        Component.__init__(self, name=name)
         self._named_children = {}
         self._is_simultaneous = False
         self._initialize_music(music)
@@ -68,10 +71,10 @@ class Container(Component):
                 return False
 
     def __delitem__(self, i):
-        r'''Delete container `i`.
-        Detach component(s) from parentage.
-        Withdraw component(s) from crossing spanners.
-        Preserve spanners that component(s) cover(s).
+        r'''Deletes container `i`.
+        Detaches component(s) from parentage.
+        Withdraws component(s) from crossing spanners.
+        Preserves spanners that component(s) cover(s).
 
         Returns none.
         '''
@@ -110,25 +113,119 @@ class Container(Component):
         message = message.format(i)
         raise ValueError(message)
 
+    def __graph__(self, spanner=None, **kwargs):
+        r'''Graphviz graph representation of container.
+
+        Returns Graphviz graph.
+        '''
+        def recurse(component, leaf_cluster):
+            component_node = component._as_graphviz_node()
+            node_mapping[component] = component_node
+            node_order = [component_node.name]
+            if isinstance(component, scoretools.Container):
+                graph.append(component_node)
+                this_leaf_cluster = documentationtools.GraphvizSubgraph(
+                    name=component_node.name,
+                    attributes={
+                        'color': 'grey75',
+                        'penwidth': 2,
+                        },
+                    )
+                all_are_leaves = True
+                pending_node_order = []
+                for child in component:
+                    if not isinstance(child, scoretools.Leaf):
+                        all_are_leaves = False
+                    child_node, child_node_order = recurse(
+                        child, this_leaf_cluster)
+                    pending_node_order.extend(child_node_order)
+                    edge = documentationtools.GraphvizEdge()
+                    edge(component_node, child_node)
+                if all_are_leaves:
+                    pending_node_order.reverse()
+                node_order.extend(pending_node_order)
+                if len(this_leaf_cluster):
+                    leaf_cluster.append(this_leaf_cluster)
+            else:
+                leaf_cluster.append(component_node)
+            return component_node, node_order
+
+        from abjad.tools import documentationtools
+        from abjad.tools import scoretools
+        node_order = []
+        node_mapping = {}
+        graph = documentationtools.GraphvizGraph(
+            name='G',
+            attributes={
+                'style': 'rounded',
+                },
+            edge_attributes={
+                },
+            node_attributes={
+                'fontname': 'Arial',
+                'shape': 'none',
+                },
+            )
+        leaf_cluster = documentationtools.GraphvizSubgraph(name='leaves')
+        component_node, node_order = recurse(self, leaf_cluster)
+        if len(leaf_cluster) == 1:
+            graph.append(leaf_cluster[0])
+        elif len(leaf_cluster):
+            graph.append(leaf_cluster)
+        graph._node_order = node_order
+
+        if spanner:
+            for component_one, component_two in \
+                sequencetools.iterate_sequence_nwise(spanner.components):
+                node_one = node_mapping[component_one]
+                node_two = node_mapping[component_two]
+                edge = documentationtools.GraphvizEdge(
+                    attributes={
+                        'constraint': False,
+                        'penwidth': 5,
+                        },
+                    )
+                edge(node_one, node_two)
+            for component in spanner.components:
+                node = node_mapping[component]
+                table = node[0]
+                table.attributes['border'] = 4
+                table.attributes['bgcolor'] = 'grey80'
+                if isinstance(component, Container):
+                    for child in iterate(component).depth_first():
+                        if child is component:
+                            continue
+                        node = node_mapping[child]
+                        table = node[0]
+                        table.attributes['bgcolor'] = 'grey80'
+
+        return graph
+
     def __len__(self):
-        r'''Number of items in container.
+        r'''Gets number of items in container.
 
         Returns nonnegative integer.
         '''
         return len(self._music)
 
     def __setitem__(self, i, expr):
-        r'''Set container `i` equal to `expr`.
-        Find spanners that dominate self[i] and children of self[i].
-        Replace contents at self[i] with 'expr'.
-        Reattach spanners to new contents.
-        This operation always leaves score tree in tact.
+        r'''Sets container `i` equal to `expr`.
+        Finds spanners that dominate self[i] and children of self[i].
+        Replaces contents at self[i] with 'expr'.
+        Reattaches spanners to new contents.
+        Always leaves score tree in tact.
 
         Returns none.
         '''
         return self._set_item(i, expr)
 
     ### PRIVATE PROPERTIES ###
+
+    @property
+    def _compact_representation(self):
+        if not self:
+            return '{ }'
+        return '{{ {} }}'.format(self._contents_summary)
 
     @property
     def _contents_duration(self):
@@ -148,6 +245,8 @@ class Container(Component):
             for x in self._music:
                 if hasattr(x, '_compact_representation_with_tie'):
                     result.append(x._compact_representation_with_tie)
+                elif hasattr(x, '_compact_representation'):
+                    result.append(x._compact_representation)
                 else:
                     result.append(str(x))
             return ' '.join(result)
@@ -214,6 +313,19 @@ class Container(Component):
         '''
         self._set_item(slice(len(self), len(self)), [component],
             withdraw_components_in_expr_from_crossing_spanners=False)
+
+    def _as_graphviz_node(self):
+        from abjad.tools import documentationtools
+        node = Component._as_graphviz_node(self)
+        node[0].append(
+            documentationtools.GraphvizTableRow([
+                documentationtools.GraphvizTableCell(
+                    label=type(self).__name__,
+                    attributes={'border': 0},
+                    ),
+                ])
+            )
+        return node
 
     def _copy_with_children_and_indicators_but_without_spanners(self):
         new = self._copy_with_indicators_but_without_children_or_spanners()
@@ -310,12 +422,11 @@ class Container(Component):
         This version is useful for finding spanners that dominant
         a zero-length slice between components, as in staff[2:2].
         '''
-        from abjad.tools import spannertools
-        Selection = selectiontools.Selection
         if left is None or right is None:
             return set([])
-        assert Selection._all_are_contiguous_components_in_same_logical_voice(
-            [left, right])
+        #Selection = selectiontools.Selection
+        #assert Selection._all_are_contiguous_components_in_same_logical_voice(
+        #    [left, right])
         left_contained = left._get_descendants()._get_spanners()
         right_contained = right._get_descendants()._get_spanners()
         dominant_spanners = left_contained & right_contained
@@ -334,7 +445,6 @@ class Container(Component):
         return receipt
 
     def _get_spanners_that_dominate_slice(self, start, stop):
-        from abjad.tools import spannertools
         if start == stop:
             if start == 0:
                 left = None
@@ -344,12 +454,53 @@ class Container(Component):
                 right = None
             else:
                 right = self[stop]
+            if left is None:
+                left = self._get_sibling(-1)
+            if right is None:
+                right = self._get_sibling(1)
             spanners_receipt = \
                 self._get_spanners_that_dominate_component_pair(left, right)
         else:
             selection = self[start:stop]
             spanners_receipt = selection._get_dominant_spanners()
         return spanners_receipt
+
+    def _get_spanners_that_span_slice(self, start, stop):
+        if start == stop:
+            if start == 0:
+                left = None
+            else:
+                left = self[start - 1]
+            if len(self) <= stop:
+                right = None
+            else:
+                right = self[stop]
+            if left is None:
+                left = self._get_sibling(-1)
+            if right is None:
+                right = self._get_sibling(1)
+            print(left, right)
+        else:
+            selection = self[start:stop]
+            print(selection)
+
+    def _iterate_bottom_up(self):
+        def recurse(node):
+            if isinstance(node, Container):
+                for x in node:
+                    for y in recurse(x):
+                        yield y
+            yield node
+        return recurse(self)
+
+    def _iterate_top_down(self):
+        def recurse(node):
+            yield node
+            if isinstance(node, Container):
+                for x in node:
+                    for y in recurse(x):
+                        yield y
+        return recurse(self)
 
     def _scale_contents(self, multiplier):
         for expr in iterate(self[:]).by_topmost_logical_ties_and_components():
@@ -361,16 +512,14 @@ class Container(Component):
         expr,
         withdraw_components_in_expr_from_crossing_spanners=True,
         ):
-        r'''This method exists beacuse __setitem__ can not accept keywords.
+        r'''This method exists because __setitem__ can not accept keywords.
         Note that setting
-        withdraw_components_in_expr_from_crossing_spanners=False
-        constitutes a composer-unsafe use of this method.
-        Only private methods should set this keyword.
+        withdraw_components_in_expr_from_crossing_spanners=False constitutes a
+        composer-unsafe use of this method. Only private methods should set
+        this keyword.
         '''
-        from abjad.tools import indicatortools
         from abjad.tools import scoretools
         from abjad.tools import selectiontools
-        from abjad.tools import spannertools
         # cache indicators attached to components in expr
         expr_indicators = []
         for component in iterate(expr).by_class():
@@ -382,77 +531,69 @@ class Container(Component):
                 expr = self._parse_string(expr)[:]
                 assert len(expr) == 1, repr(expr)
                 expr = expr[0]
-            assert all(isinstance(x, scoretools.Component) for x in [expr])
-            if any(isinstance(x, scoretools.GraceContainer) for x in [expr]):
-                message = 'must attach grace container to note or chord.'
-                raise Exception(message)
-            old = self[i]
-            selection = selectiontools.ContiguousSelection(old)
-            spanners_receipt = selection._get_dominant_spanners()
-            for child in iterate([old]).by_class():
-                for spanner in child._get_spanners():
-                    spanner._remove(child)
+            else:
+                expr = [expr]
             if i < 0:
                 i = len(self) + i
-            del(self[i])
-            # must withdraw from spanners before withdrawing from parentage!
-            # otherwise begin / end assessments don't work!
-            if withdraw_components_in_expr_from_crossing_spanners:
-                selection = selectiontools.SliceSelection([expr])
-                selection._withdraw_from_crossing_spanners()
-            expr._set_parent(self)
-            self._music.insert(i, expr)
-            for spanner, index in spanners_receipt:
-                spanner._insert(index, expr)
-                expr._spanners.add(spanner)
-        # slice assignment
+            i = slice(i, i + 1)
         else:
             if isinstance(expr, str):
                 expr = self._parse_string(expr)[:]
-            elif isinstance(expr, list) and \
-                len(expr) == 1 and \
-                isinstance(expr[0], str):
+            elif (isinstance(expr, list) and
+                len(expr) == 1 and
+                isinstance(expr[0], str)):
                 expr = self._parse_string(expr[0])[:]
-            prototype = (scoretools.Component, selectiontools.Selection)
-            assert all(isinstance(x, prototype) for x in expr)
-            new_expr = []
-            for item in expr:
-                if isinstance(item, selectiontools.Selection):
-                    new_expr.extend(item)
-                else:
-                    new_expr.append(item)
-            expr = new_expr
-            assert all(isinstance(x, scoretools.Component) for x in expr)
-            if any(isinstance(x, scoretools.GraceContainer) for x in expr):
-                message = 'must attach grace container to note or chord.'
-                raise Exception(message)
-            if i.start == i.stop and i.start is not None \
-                and i.stop is not None and i.start <= -len(self):
-                start, stop = 0, 0
+
+        prototype = (scoretools.Component, selectiontools.Selection)
+        assert all(isinstance(x, prototype) for x in expr)
+
+        new_expr = []
+        for item in expr:
+            if isinstance(item, selectiontools.Selection):
+                new_expr.extend(item)
             else:
-                start, stop, stride = i.indices(len(self))
-            old = self[start:stop]
-            spanners_receipt = self._get_spanners_that_dominate_slice(
-                start, stop)
-            for component in old:
-                for child in iterate([component]).by_class():
-                    for spanner in child._get_spanners():
-                        spanner._remove(child)
-            del(self[start:stop])
-            # must withdraw before setting in self!
-            # otherwise circular withdraw ensues!
-            if withdraw_components_in_expr_from_crossing_spanners:
-                selection = selectiontools.SliceSelection(expr)
-                if selection._all_are_contiguous_components_in_same_logical_voice(
-                    selection):
-                    selection._withdraw_from_crossing_spanners()
-            self._music.__setitem__(slice(start, start), expr)
-            for component in expr:
-                component._set_parent(self)
-            for spanner, index in spanners_receipt:
-                for component in reversed(expr):
-                    spanner._insert(index, component)
-                    component._spanners.add(spanner)
+                new_expr.append(item)
+        expr = new_expr
+
+        assert all(isinstance(x, scoretools.Component) for x in expr)
+        if any(isinstance(x, scoretools.GraceContainer) for x in expr):
+            message = 'must attach grace container to note or chord.'
+            raise Exception(message)
+        if self._check_for_cycles(expr):
+            raise ParentageError('Attempted to induce cycles.')
+        if (i.start == i.stop and 
+            i.start is not None and
+            i.stop is not None and
+            i.start <= -len(self)):
+            start, stop = 0, 0
+        else:
+            start, stop, stride = i.indices(len(self))
+        old = self[start:stop]
+        spanners_receipt = self._get_spanners_that_dominate_slice(
+            start, stop)
+        #print('RECEIPT', spanners_receipt, self, expr)
+
+        for component in old:
+            for child in iterate([component]).by_class():
+                for spanner in child._get_spanners():
+                    spanner._remove(child)
+        del(self[start:stop])
+
+        # must withdraw before setting in self!
+        # otherwise circular withdraw ensues!
+        if withdraw_components_in_expr_from_crossing_spanners:
+            selection = selectiontools.SliceSelection(expr)
+            if selection._all_are_contiguous_components_in_same_logical_voice(
+                selection):
+                selection._withdraw_from_crossing_spanners()
+        self._music.__setitem__(slice(start, start), expr)
+        for component in expr:
+            component._set_parent(self)
+        for spanner, index in spanners_receipt:
+            for component in reversed(expr):
+                spanner._insert(index, component)
+                component._spanners.add(spanner)
+
         for indicator in expr_indicators:
             if hasattr(indicator, '_update_effective_context'):
                 indicator._update_effective_context()
@@ -461,11 +602,11 @@ class Container(Component):
 
     @property
     def is_simultaneous(self):
-        r'''Simultaneity status of container.
+        r'''Is true when container is simultaneous. Otherwise false.
 
         ..  container:: example
 
-            **Example 1.** Get simultaneity status of container:
+            **Example 1.** Gets simultaneity status of container:
 
             ::
 
@@ -495,7 +636,7 @@ class Container(Component):
 
         ..  container:: example
 
-            **Example 2.** Set simultaneity status of container:
+            **Example 2.** Sets simultaneity status of container:
 
             ::
 
@@ -537,7 +678,11 @@ class Container(Component):
                     }
                 >>
 
-        Returns boolean.
+        Defaults to false.
+
+        Set to true or false.
+
+        Returns true or false.
         '''
         return self._is_simultaneous
 
@@ -568,10 +713,14 @@ class Container(Component):
         return True
 
     def _initialize_music(self, music):
-        from abjad.tools import scoretools
         Selection = selectiontools.Selection
         if music is None:
             music = []
+        if all(isinstance(_, Selection) for _ in music):
+            result = []
+            for _ in music:
+                result.extend(_)
+            music = result
         if self._all_are_orphan_components(music):
             self._music = list(music)
             self[:]._set_parents(self)
@@ -588,9 +737,9 @@ class Container(Component):
             parsed = self._parse_string(music)
             self._music = []
             self.is_simultaneous = parsed.is_simultaneous
-            if parsed.is_simultaneous or \
+            if (parsed.is_simultaneous or
                 not Selection._all_are_contiguous_components_in_same_logical_voice(
-                parsed[:]):
+                parsed[:])):
                 while len(parsed):
                     self.append(parsed.pop(0))
             else:
@@ -628,8 +777,8 @@ class Container(Component):
         elif user_input.startswith('rtm:'):
             parsed = rhythmtreetools.parse_rtm_syntax(user_input[4:])
         else:
-            if not user_input.startswith('<<') or \
-                not user_input.endswith('>>'):
+            if (not user_input.startswith('<<') or
+                not user_input.endswith('>>')):
                 user_input = '{{ {} }}'.format(user_input)
             parsed = lilypondparsertools.LilyPondParser()(user_input)
             if isinstance(parsed, lilypondfiletools.LilyPondFile):
@@ -640,7 +789,11 @@ class Container(Component):
     def _scale(self, multiplier):
         self._scale_contents(multiplier)
 
-    def _split_at_index(self, i, fracture_spanners=False):
+    def _split_at_index(
+        self, 
+        i, 
+        fracture_spanners=False,
+        ):
         r'''Splits container to the left of index `i`.
 
         Preserves tuplet multiplier when container is a tuplet.
@@ -718,6 +871,7 @@ class Container(Component):
         duration,
         fracture_spanners=False,
         tie_split_notes=True,
+        use_messiaen_style_ties=False,
         ):
         from abjad.tools import scoretools
         from abjad.tools import selectiontools
@@ -789,6 +943,7 @@ class Container(Component):
                 split_point_in_bottom,
                 fracture_spanners=fracture_spanners,
                 tie_split_notes=tie_split_notes,
+                use_messiaen_style_ties=use_messiaen_style_ties,
                 )
             right = right_list[0]
             leaf_right_of_split = right
@@ -852,15 +1007,17 @@ class Container(Component):
         right_logical_tie._fuse_leaves_by_immediate_parent()
         # reapply tie here if crawl above killed tie applied to leaves
         if did_split_leaf:
-            if tie_split_notes and \
-                isinstance(leaf_left_of_split, scoretools.Note):
-                if leaf_left_of_split._get_parentage().root is \
-                    leaf_right_of_split._get_parentage().root:
+            if (tie_split_notes and
+                isinstance(leaf_left_of_split, scoretools.Note)):
+                if (leaf_left_of_split._get_parentage().root is
+                    leaf_right_of_split._get_parentage().root):
                     leaves_around_split = \
                         (leaf_left_of_split, leaf_right_of_split)
                     selection = selectiontools.ContiguousSelection(
                         leaves_around_split)
-                    selection._attach_tie_spanner_to_leaf_pair()
+                    selection._attach_tie_spanner_to_leaf_pair(
+                        use_messiaen_style_ties=use_messiaen_style_ties,
+                        )
         # return pair of left and right list-wrapped halves of container
         return ([left], [right])
 
@@ -870,6 +1027,8 @@ class Container(Component):
         r'''Appends `component` to container.
 
         ..  container:: example
+
+            **Example 1.** Appends note to container:
 
             ::
 
@@ -908,6 +1067,8 @@ class Container(Component):
         r'''Extends container with `expr`.
 
         ..  container:: example
+
+            **Example 1.** Extends container with three notes:
 
             ::
 
@@ -953,6 +1114,8 @@ class Container(Component):
 
         ..  container:: example
 
+            **Example 1.** Gets index of last element in container:
+
             ::
 
                 >>> container = Container("c'4 d'4 f'4 e'4")
@@ -994,7 +1157,7 @@ class Container(Component):
 
         ..  container:: example
 
-            **Example 1.** Insert note. Do not fracture spanners:
+            **Example 1.** Inserts note. Does not fracture spanners:
 
             ::
 
@@ -1050,7 +1213,7 @@ class Container(Component):
 
         ..  container:: example
 
-            **Example 2.** Insert note. Fracture spanners:
+            **Example 2.** Inserts note. Fractures spanners:
 
             ::
 
@@ -1107,14 +1270,11 @@ class Container(Component):
         Returns none.
         '''
         from abjad.tools import scoretools
-        from abjad.tools import scoretools
-        from abjad.tools import scoretools
-        from abjad.tools import spannertools
-        assert isinstance(component, scoretools.Component)
         assert isinstance(i, int)
         if not fracture_spanners:
             self.__setitem__(slice(i, i), [component])
             return
+        assert isinstance(component, scoretools.Component)
         component._set_parent(self)
         self._music.insert(i, component)
         previous_leaf = component._get_leaf(-1)
@@ -1132,6 +1292,8 @@ class Container(Component):
         r'''Pops component from container at index `i`.
 
         ..  container:: example
+
+            **Example 1.** Pops last element from container:
 
             ::
 
@@ -1173,6 +1335,8 @@ class Container(Component):
         r'''Removes `component` from container.
 
         ..  container:: example
+
+            **Example 1.** Removes note from container:
 
             ::
 
@@ -1218,6 +1382,8 @@ class Container(Component):
         r'''Reverses contents of container.
 
         ..  container:: example
+
+            **Example 1.** Reverses staff:
 
             ::
 
@@ -1271,6 +1437,8 @@ class Container(Component):
 
         ..  container:: example
 
+            **Example 1.** Selects leaves from container:
+
             ::
 
                 >>> container = Container("c'8 d'8 r8 e'8")
@@ -1301,20 +1469,3 @@ class Container(Component):
                 music)
             selection = selectiontools.ContiguousSelection(music=music)
         return selection
-
-    def select_notes_and_chords(self):
-        r'''Selects notes and chords in container.
-
-        ..  container:: example
-
-            ::
-
-                >>> container.select_notes_and_chords()
-                Selection(Note("c'8"), Note("d'8"), Note("e'8"))
-
-        Returns leaf selection.
-        '''
-        from abjad.tools import scoretools
-        from abjad.tools import selectiontools
-        generator = iterate(self).by_class((scoretools.Note, scoretools.Chord))
-        return selectiontools.Selection(generator)

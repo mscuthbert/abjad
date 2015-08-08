@@ -35,6 +35,12 @@ class Infinity(AbjadObject):
     global Abjad namespace.
     '''
 
+    ### CLASS VARIABLES ###
+
+    __slots__ = (
+        '_value',
+        )
+
     ### INTIALIZER ###
 
     def __init__(self):
@@ -68,7 +74,7 @@ class Infinity(AbjadObject):
     def __hash__(self):
         r'''Hashes infinity.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''

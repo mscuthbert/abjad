@@ -1,72 +1,59 @@
 # -*- encoding: utf-8 -*-
-from abjad.tools.abctools.AbjadObject import AbjadObject
+from abjad.tools.abctools.AbjadValueObject import AbjadValueObject
 
 
-class Arpeggio(AbjadObject):
-    r'''An arpeggio indication.
+class Arpeggio(AbjadValueObject):
+    r'''An arpeggio.
 
-    ::
+    ..  container:: example
 
-        >>> chord = Chord("<c' e' g' c''>4")
-        >>> arpeggio = indicatortools.Arpeggio()
-        >>> attach(arpeggio, chord)
-        >>> show(chord) # doctest: +SKIP
+        **Example 1.** Without direction arrow:
 
-    ..  doctest::
+        ::
 
-        >>> print(format(chord))
-        <c' e' g' c''>4 \arpeggio
+            >>> chord = Chord("<c' e' g' c''>4")
+            >>> arpeggio = indicatortools.Arpeggio()
+            >>> attach(arpeggio, chord)
+            >>> show(chord) # doctest: +SKIP
 
-    An arpeggio arrow direction can be specified:
+        ..  doctest::
 
-    ::
+            >>> print(format(chord))
+            <c' e' g' c''>4 \arpeggio
 
-        >>> chord = Chord("<c' e' g' c''>4")
-        >>> arpeggio = indicatortools.Arpeggio(direction=Down)
-        >>> attach(arpeggio, chord)
-        >>> show(chord) # doctest: +SKIP
+    ..  container:: example
 
-    ..  doctest::
+        **Example 2.** With direction arrow:
 
-        >>> print(format(chord))
-        \arpeggioArrowDown
-        <c' e' g' c''>4 \arpeggio
+        ::
+
+            >>> chord = Chord("<c' e' g' c''>4")
+            >>> arpeggio = indicatortools.Arpeggio(direction=Down)
+            >>> attach(arpeggio, chord)
+            >>> show(chord) # doctest: +SKIP
+
+        ..  doctest::
+
+            >>> print(format(chord))
+            \arpeggioArrowDown
+            <c' e' g' c''>4 \arpeggio
 
     '''
 
     ### CLASS VARIABLES ###
 
     __slots__ = (
+        '_default_scope',
         '_direction',
         )
 
     ### INITIALIZER ###
 
     def __init__(self, direction=None):
-        assert direction in (Up, Down, Center, None)
+        self._default_scope = None
+        if direction is not None:
+            assert direction in (Up, Down, Center)
         self._direction = direction
-
-    ### SPECIAL METHODS ###
-
-    def __eq__(self, expr):
-        r'''Is true when `expr` is an arpeggio indication with a direction
-        equal to that of this arpeggio indication. Otherwise false.
-
-        Returns boolean.
-        '''
-        if isinstance(expr, type(self)):
-            if expr.direction == self.direction:
-                return True
-        return False
-
-    def __hash__(self):
-        r'''Hashes arpeggio.
-
-        Required to be explicitly re-defined on Python 3 if __eq__ changes.
-
-        Returns integer.
-        '''
-        return super(Arpeggio, self).__hash__()
 
     ### PRIVATE PROPERTIES ###
 
@@ -74,8 +61,9 @@ class Arpeggio(AbjadObject):
     def _lilypond_format(self):
         return r'\arpeggio'
 
-    @property
-    def _lilypond_format_bundle(self):
+    ### PRIVATE METHODS ###
+
+    def _get_lilypond_format_bundle(self, component=None):
         from abjad.tools import systemtools
         lilypond_format_bundle = systemtools.LilyPondFormatBundle()
         lilypond_format_bundle.right.articulations.append(r'\arpeggio')
@@ -90,9 +78,45 @@ class Arpeggio(AbjadObject):
     ### PUBLIC PROPERTIES ###
 
     @property
-    def direction(self):
-        r'''Gets arpeggio arrow direction.
+    def default_scope(self):
+        r'''Gets default scope of arpeggio.
 
-        Return ordinal constant or none.
+        ..  container:: example
+
+            ::
+
+                >>> arpeggio = indicatortools.Arpeggio()
+                >>> arpeggio.default_scope is None
+                True
+
+        Returns none.
+        '''
+        return self._default_scope
+
+    @property
+    def direction(self):
+        r'''Gets direction of arpeggio.
+
+        ..  container:: example
+
+            **Example 1.** Without direction arrow:
+
+            ::
+
+                >>> arpeggio = indicatortools.Arpeggio()
+                >>> arpeggio.direction is None
+                True
+
+        ..  container:: example
+
+            **Example 2.** With direction arrow:
+
+            ::
+
+                >>> arpeggio = indicatortools.Arpeggio(direction=Down)
+                >>> arpeggio.direction
+                Down
+
+        Returns ordinal constant or none.
         '''
         return self._direction

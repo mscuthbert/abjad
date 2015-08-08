@@ -31,16 +31,17 @@ class PitchClassSegment(Segment):
 
     ### CLASS VARIABLES ###
 
-    __slots__ = (
-        )
+    __slots__ = ()
 
     ### INITIALIZER ###
 
     def __init__(
         self,
-        items=(-2, -1.5, 6, 7, -1.5, 7),
+        items=None,
         item_class=None,
         ):
+        if not items and not item_class:
+            item_class = self._named_item_class
         Segment.__init__(
             self,
             items=items,
@@ -120,7 +121,7 @@ class PitchClassSegment(Segment):
             item_class=item_class,
             )
 
-    def invert(self):
+    def invert(self, axis=None):
         r'''Inverts pitch-class segment:
 
         ::
@@ -133,7 +134,7 @@ class PitchClassSegment(Segment):
 
         Returns new pitch-class segment.
         '''
-        items = (pc.invert() for pc in self)
+        items = (pc.invert(axis=axis) for pc in self)
         return new(self, items=items)
 
     def is_equivalent_under_transposition(self, expr):

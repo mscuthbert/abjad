@@ -1,11 +1,17 @@
 # -*- encoding: utf-8 -*-
+import difflib
 import inspect
 import os
+from abjad.tools.abctools import AbjadObject
 
 
-class TestManager(object):
+class TestManager(AbjadObject):
     r'''Manages test logic.
     '''
+
+    ### CLASS VARIABLES ###
+
+    __documentation_section__ = 'Managers'
 
     ### PRIVATE METHODS ###
 
@@ -223,7 +229,7 @@ class TestManager(object):
         massaged_lines = []
         for split_line in split_lines:
             massaged_line = split_line[indent_width:]
-            #massaged_line = massaged_line.replace('    ', '\t')
+            massaged_line = massaged_line.rstrip()
             massaged_lines.append(massaged_line)
         massaged_string = '\n'.join(massaged_lines)
         return massaged_string
@@ -269,7 +275,7 @@ class TestManager(object):
         * Discards any LilyPond version statements
         * Discards any lines beginning with ``%``
 
-        For PDFs, additionally discards lines that contain any of the 
+        For PDFs, additionally discards lines that contain any of the
         following strings:
 
         * ``/ID``
@@ -307,6 +313,63 @@ class TestManager(object):
             return TestManager._compare_pdfs(path_1, path_2)
         else:
             return TestManager._compare_text_files(path_1, path_2)
+
+    @staticmethod
+    def diff(object_a, object_b, title=None):
+        r'''Gets diff of `object_a` and `object_b` formats.
+
+        ::
+
+            >>> one = rhythmmakertools.TaleaRhythmMaker(
+            ...     talea=rhythmmakertools.Talea(
+            ...         counts=[1, 2, 3],
+            ...         denominator=8,
+            ...         )
+            ...     )
+
+        ::
+
+            >>> two = rhythmmakertools.TaleaRhythmMaker(
+            ...     talea=rhythmmakertools.Talea(
+            ...         counts=[1, 5, 3],
+            ...         denominator=4,
+            ...         )
+            ...     )
+
+        ::
+
+            >>> diff = systemtools.TestManager.diff(one, two, 'Diff:')
+            >>> print(diff)
+            Diff:
+              rhythmmakertools.TaleaRhythmMaker(
+                  talea=rhythmmakertools.Talea(
+            -         counts=(1, 2, 3),
+            ?                    ^
+            +         counts=(1, 5, 3),
+            ?                    ^
+            -         denominator=8,
+            ?                     ^
+            +         denominator=4,
+            ?                     ^
+                      ),
+                  )
+
+        Returns string.
+        '''
+        try:
+            a_format = format(object_a, 'storage')
+        except ValueError:
+            a_format = format(object_a)
+        try:
+            b_format = format(object_b, 'storage')
+        except ValueError:
+            b_format = format(object_b)
+        a_format = a_format.splitlines(True)
+        b_format = b_format.splitlines(True)
+        diff = ''.join(difflib.ndiff(a_format, b_format))
+        if title is not None:
+            diff = title + '\n' + diff
+        return diff
 
     @staticmethod
     def get_current_function_name():
@@ -415,9 +478,7 @@ class TestManager(object):
         '''
         from abjad.tools import lilypondfiletools
         from abjad.tools import markuptools
-        from abjad.tools import schemetools
         from abjad.tools import scoretools
-        from abjad.tools import systemtools
         from abjad.tools import topleveltools
         if go:
             cache_ly = cache_pdf = render_pdf = True

@@ -39,16 +39,17 @@ class PitchSegment(Segment):
 
     ### CLASS VARIABLES ###
 
-    __slots__ = (
-        )
+    __slots__ = ()
 
     ### INITIALIZER ###
 
     def __init__(
         self,
-        items=(-2, -1.5, 6, 7, -1.5, 7),
+        items=None,
         item_class=None,
         ):
+        if not items and not item_class:
+            item_class = self._named_item_class
         Segment.__init__(
             self,
             items=items,
@@ -75,7 +76,6 @@ class PitchSegment(Segment):
         from abjad.tools import markuptools
         from abjad.tools import pitchtools
         from abjad.tools import scoretools
-        from abjad.tools import spannertools
         from abjad.tools.topleveltools import attach
         from abjad.tools.topleveltools import iterate
         from abjad.tools.topleveltools import override
@@ -91,23 +91,6 @@ class PitchSegment(Segment):
         return lilypond_file
 
     ### PRIVATE PROPERTIES ###
-
-    @property
-    def _attribute_manifest(self):
-        from abjad.tools import systemtools
-        from ide import idetools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='items',
-                command='ii',
-                editor=idetools.TupleAutoeditor,
-                ),
-            systemtools.AttributeDetail(
-                name='item_class',
-                command='ic',
-                editor=idetools.getters.get_class,
-                ),
-            )
 
     @property
     def _named_item_class(self):
@@ -167,7 +150,7 @@ class PitchSegment(Segment):
             item_class=item_class,
             )
 
-    def invert(self, axis):
+    def invert(self, axis=None):
         r'''Inverts pitch segment about `axis`.
 
         Returns new pitch segment.
@@ -189,7 +172,7 @@ class PitchSegment(Segment):
         difference = -(pitchtools.NamedPitch(expr[0], 4) -
             pitchtools.NamedPitch(self[0], 4))
         new_pitches = (x + difference for x in self)
-        new_pitches = new(self, items=new_pitch)
+        new_pitches = new(self, items=new_pitches)
         return expr == new_pitches
 
     def make_notes(self, n=None, written_duration=None):
@@ -254,6 +237,24 @@ class PitchSegment(Segment):
             for note in logical_tie:
                 note.written_pitch = pitch
         return result
+
+    def multiply(self, index):
+        r'''Multiplies pitch segment.
+
+        ::
+
+            >>> result = named_pitch_segment.multiply(3)
+            >>> result
+            PitchSegment(['fs,', 'eqs', "fs'", "a'", 'gqs', "a'"])
+
+        ::
+
+            >>> show(result) # doctest: +SKIP
+
+        Returns new pitch segment.
+        '''
+        items = (x.multiply(index) for x in self)
+        return new(self, items=items)
 
     def retrograde(self):
         r'''Retrograde of pitch segment.

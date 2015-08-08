@@ -89,38 +89,14 @@ class QEventProxy(AbjadObject):
             return systemtools.StorageFormatManager.get_storage_format(self)
         return str(self)
 
-    def __getnewargs__(self):
-        r'''Gets new arguments.
-
-        Returns tuple.
-        '''
-        return (self.q_event, self.offset)
-
-    def __getstate__(self):
-        r'''Gets state.
-        '''
-        state = {}
-        for current_class in inspect.getmro(type(self)):
-            if hasattr(current_class, '__slots__'):
-                for slot in current_class.__slots__:
-                    if slot not in state:
-                        state[slot] = getattr(self, slot)
-        return state
-
     def __hash__(self):
         r'''Hashes q-event proxy.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''
         return super(QEventProxy, self).__hash__()
-
-    def __setstate__(self, state):
-        r'''Sets state.
-        '''
-        for key, value in state.items():
-            setattr(self, key, value)
 
     ### PRIVATE PROPERTIES ###
 

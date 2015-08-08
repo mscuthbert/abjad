@@ -1,5 +1,4 @@
 # -*- encoding: utf-8 -*-
-import abc
 import functools
 from abjad.tools import mathtools
 from abjad.tools.pitchtools.Interval import Interval
@@ -100,6 +99,10 @@ class NamedInterval(Interval):
                 number += abs(octaves) * 7
                 if sign == -1:
                     number *= -1
+            else:
+                message = 'can not initialize {}: {!r}'
+                message = message.format(type(self).__init__, args)
+                raise ValueError(message)
         elif len(args) == 2:
             quality_string, number = args
         elif len(args) == 0:
@@ -199,7 +202,7 @@ class NamedInterval(Interval):
     def __hash__(self):
         r'''Hashes named interval.
 
-        Required to be explicitely re-defined on Python 3 if __eq__ changes.
+        Required to be explicitly re-defined on Python 3 if __eq__ changes.
 
         Returns integer.
         '''
@@ -416,6 +419,16 @@ class NamedInterval(Interval):
             ...     NamedPitch(12),
             ...     )
             NamedInterval('+M9')
+
+        ::
+
+            ..  todo:: Improve this behavior.
+
+            >>> pitchtools.NamedInterval.from_pitch_carriers(
+            ...     NamedPitch("cs'"),
+            ...     NamedPitch("cf'"),
+            ...     )
+            NamedInterval('-M2')
 
         Returns named interval.
         '''

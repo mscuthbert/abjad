@@ -2,12 +2,37 @@
 from abjad.tools import indicatortools
 from abjad.tools import scoretools
 from abjad.tools.topleveltools import attach
+from abjad.tools.topleveltools import inspect_
 from abjad.tools.topleveltools import iterate
 from abjad.tools.handlertools.DynamicHandler import DynamicHandler
 
 
 class ReiteratedDynamicHandler(DynamicHandler):
     r'''Reiterated dynamic handler.
+
+    ..  container:: example
+
+        ::
+
+            >>> handler = handlertools.ReiteratedDynamicHandler(
+            ...     dynamic_name='f',
+            ...     )
+            >>> staff = Staff("c'4. ~ c'8 d'4 e'4")
+            >>> logical_ties = iterate(staff).by_logical_tie(pitched=True)
+            >>> logical_ties = list(logical_ties)
+            >>> logical_ties = handler(logical_ties)
+            >>> show(staff) # doctest: +SKIP
+
+        ..  doctest::
+
+            >>> print(format(staff))
+            \new Staff {
+                c'4. \f ~
+                c'8
+                d'4 \f
+                e'4 \f
+            }
+
     '''
 
     ### CLASS ATTRIBUTES ###
@@ -38,27 +63,10 @@ class ReiteratedDynamicHandler(DynamicHandler):
                 self.dynamic_name,
                 'right',
                 )
-            attach(command, note_or_chord)
+            logical_tie = inspect_(note_or_chord).get_logical_tie()
+            if note_or_chord is logical_tie.head:
+                attach(command, note_or_chord)
         return expr
-
-    ### PRIVATE PROPERTIES ###
-
-    @property
-    def _attribute_manifest(self):
-        from abjad.tools import systemtools
-        from ide import idetools
-        return systemtools.AttributeManifest(
-            systemtools.AttributeDetail(
-                name='dynamic_name',
-                command='dy',
-                editor=idetools.getters.get_dynamic,
-                ),
-            systemtools.AttributeDetail(
-                name='minimum_duration',
-                command='md',
-                editor=idetools.getters.get_duration,
-                ),
-            )
 
     ### PUBLIC PROPERTIES ###
 
