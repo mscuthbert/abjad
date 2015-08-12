@@ -23,11 +23,17 @@ typographic details of the symbols on the page.
 ..  _GitHub: https://github.com/Abjad/abjad
 ..  _PyPI: https://pypi.python.org/pypi/Abjad
 
-..  image:: https://travis-ci.org/Abjad/abjad.svg?branch=master
+..  image:: https://img.shields.io/travis/Abjad/abjad/master.svg?style=flat-square
     :target: https://travis-ci.org/Abjad/abjad
 
-..  image:: https://img.shields.io/coveralls/Abjad/abjad.svg
+..  image:: https://img.shields.io/coveralls/Abjad/abjad/master.svg?style=flat-square
     :target: https://coveralls.io/r/Abjad/abjad
+
+..  image:: https://img.shields.io/pypi/v/abjad.svg?style=flat-square
+    :target: https://pypi.python.org/pypi/abjad
+
+..  image:: https://img.shields.io/pypi/dm/abjad.svg?style=flat-square
+    :target: https://pypi.python.org/pypi/abjad
 
 Installation
 ============

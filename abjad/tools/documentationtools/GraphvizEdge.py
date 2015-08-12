@@ -35,29 +35,6 @@ class GraphvizEdge(GraphvizMixin):
         self.head_port_position = head_port_position
         self.tail_port_position = tail_port_position
 
-    ### SPECIAL METHODS ###
-
-    def __call__(self, *args):
-        r'''Calls Graphviz edge.
-
-        Returns Graphviz edge.
-        '''
-        from abjad.tools import documentationtools
-        if args:
-            assert len(args) == 2
-            prototype = (
-                documentationtools.GraphvizSubgraph,
-                documentationtools.GraphvizNode,
-                documentationtools.GraphvizField,
-                )
-            assert all(isinstance(x, prototype) for x in args)
-            tail, head = args
-            self._disconnect()
-            self._connect(tail, head)
-        else:
-            self._disconnect()
-        return self
-
     ### PRIVATE METHODS ###
 
     def _connect(self, tail, head):
@@ -118,6 +95,27 @@ class GraphvizEdge(GraphvizMixin):
             result[0] = '{} {}'.format(edge_def, result[0])
             return result
         return [edge_def + ';']
+
+    ### PUBLIC METHODS ###
+
+    def attach(self, tail, head):
+        r'''Attaches edge from `tail` to `head`.
+        '''
+        from abjad.tools import documentationtools
+        prototype = (
+            documentationtools.GraphvizSubgraph,
+            documentationtools.GraphvizNode,
+            documentationtools.GraphvizField,
+            )
+        assert isinstance(tail, prototype)
+        assert isinstance(head, prototype)
+        self._disconnect()
+        self._connect(tail, head)
+
+    def detach(self):
+        r'''Detaches edge.
+        '''
+        self._disconnect()
 
     ### PUBLIC PROPERTIES ###
 

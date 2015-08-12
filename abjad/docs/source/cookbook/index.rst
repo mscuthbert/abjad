@@ -7,7 +7,8 @@ The new Abjad cookbook
 
     mapping_patterns_to_notation
     selecting_musical_objects
-    transforming_score_structures
+    splitting_and_fusing
+    swapping_objects
     creating_tables_of_chords
     interpolating_between_chords
     creating_custom_symbols
@@ -24,6 +25,7 @@ The new Abjad cookbook
     working_with_stylesheets
     preparing_complex_documents
     templating_and_persisting
+    creating_graphs
 
 The old Abjad cookbook
 ======================

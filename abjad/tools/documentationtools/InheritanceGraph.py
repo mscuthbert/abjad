@@ -291,7 +291,8 @@ class InheritanceGraph(AbjadObject):
                 if ok_to_join:
                     parent_node = class_nodes[parent]
                     child_node = class_nodes[child]
-                    documentationtools.GraphvizEdge()(parent_node, child_node)
+                    documentationtools.GraphvizEdge().attach(
+                        parent_node, child_node)
 
         for i, cluster in enumerate(
             sorted(graph.children, key=lambda x: x.name)):
@@ -338,7 +339,8 @@ class InheritanceGraph(AbjadObject):
             recurse(current_class)
         return child_parents_mapping, parent_children_mapping
 
-    def _collect_classes(self, addresses, recurse_into_submodules):
+    @classmethod
+    def _collect_classes(cls, addresses, recurse_into_submodules):
         all_classes = set([])
         cached_addresses = []
         immediate_classes = set([])
@@ -363,7 +365,7 @@ class InheritanceGraph(AbjadObject):
                     elif isinstance(y, types.ModuleType) and \
                         recurse_into_submodules:
                         all_classes.update(
-                            self._submodule_recurse(y, visited_modules))
+                            cls._submodule_recurse(y, visited_modules))
                 address = module.__name__
             else:
                 if isinstance(x, type):
@@ -479,7 +481,8 @@ class InheritanceGraph(AbjadObject):
             del(parent_children_mapping[current_class])
             del(child_parents_mapping[current_class])
 
-    def _submodule_recurse(self, module, visited_modules):
+    @classmethod
+    def _submodule_recurse(cls, module, visited_modules):
         result = []
         for obj in list(module.__dict__.values()):
             if isinstance(obj, type):
@@ -487,7 +490,7 @@ class InheritanceGraph(AbjadObject):
             elif isinstance(obj, types.ModuleType) and \
                 obj not in visited_modules:
                 visited_modules.add(obj)
-                result.extend(self._submodule_recurse(obj, visited_modules))
+                result.extend(cls._submodule_recurse(obj, visited_modules))
         return result
 
     ### PUBLIC PROPERTIES ###
